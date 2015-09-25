@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
     name='drf-oidc-auth',
-    version='0.1',
+    version='0.2',
     packages=['oidc_auth'],
     url='https://github.com/ByteInternet/drf-oidc-auth',
     license='MIT',

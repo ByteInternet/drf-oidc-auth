@@ -45,7 +45,7 @@ class JSONWebTokenAuthentication(BaseAuthentication):
         payload = self.decode_jwt(jwt_value)
         self.validate_claims(payload)
 
-        user = get_user_by_id(payload)
+        user = api_settings.OIDC_RESOLVE_USER_FUNCTION(payload)
 
         return user, payload
 

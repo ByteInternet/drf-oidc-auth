@@ -44,6 +44,13 @@ OIDC_AUTH = {
     # Accepted audiences the ID Tokens can be issued to
     'OIDC_AUDIENCE': 'myapp',
     
+    # (Optional) Function that resolves id_token into user.
+    # This function receives an id_token dict and expects to return
+    # a User object. The default implementation tries to find the user
+    # based on username (natural key) taken from the 'sub'-claim of the
+    # id_token.
+    'OIDC_RESOLVE_USER_FUNCTION': 'oidc_auth.authentication.get_user_by_id',
+    
     # (Optional) Number of seconds in the past valid tokens can be 
     # issued (default 600)
     'OIDC_LEEWAY': 600,
