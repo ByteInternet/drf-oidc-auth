@@ -27,11 +27,6 @@ def get_user_by_id(id_token):
     return user
 
 
-class IsAuthenticated(BasePermission):
-    def has_permission(self, request, view):
-        return request.user and not isinstance(request.user, AnonymousUser)
-
-
 class JSONWebTokenAuthentication(BaseAuthentication):
     """ Token based authentication using the JSON Web Token standard
     """

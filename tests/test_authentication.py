@@ -1,20 +1,20 @@
 from django.contrib.auth.models import User
-
-try:
-    from unittest.mock import patch, Mock
-except ImportError:
-    from mock import patch, Mock
+from rest_framework.permissions import IsAuthenticated
 from django.conf.urls import url
 from django.http import HttpResponse
 from django.test import TestCase
 from jwkest.jwk import RSAKey, KEYS
 from jwkest.jws import JWS
 from rest_framework.views import APIView
-from oidc_auth.authentication import JSONWebTokenAuthentication, IsAuthenticated
+from oidc_auth.authentication import JSONWebTokenAuthentication
 from oidc_auth.settings import api_settings
 import sys
 if sys.version_info > (3,):
     long = int
+try:
+    from unittest.mock import patch, Mock
+except ImportError:
+    from mock import patch, Mock
 
 
 class MockView(APIView):
