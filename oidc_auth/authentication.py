@@ -1,7 +1,6 @@
 from calendar import timegm
 import datetime
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import AnonymousUser
 from django.utils.encoding import smart_text
 from django.utils.functional import cached_property
 from jwkest import JWKESTException
@@ -10,7 +9,6 @@ from jwkest.jws import JWS
 import requests
 from rest_framework.authentication import BaseAuthentication, get_authorization_header
 from rest_framework.exceptions import AuthenticationFailed
-from rest_framework.permissions import BasePermission
 import six
 from .util import cache
 from .settings import api_settings
