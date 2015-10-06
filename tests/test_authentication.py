@@ -71,7 +71,7 @@ class TestJWTAuthentication(TestCase):
         mock_get.return_value.json.return_value = {"jwks_uri": "http://example.com/jwks",
                                                    "issuer": "http://example.com"}
         keys = KEYS()
-        keys.add({'key': key, 'kty': 'RSA'})
+        keys.add({'key': key, 'kty': 'RSA', 'kid': key.kid})
         self.patch('jwkest.jwk.request', return_value=Mock(status_code=200,
                                                            text=keys.dump_jwks()))
 
