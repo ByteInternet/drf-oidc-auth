@@ -1,0 +1,11 @@
+language: python
+python: 2.7
+install:
+  - pip install tox
+env:
+  - TOXENV=py27-django18-drf32
+  - TOXENV=py27-django16-drf24
+  - TOXENV=py34-django16-drf24
+  - TOXENV=py34-django18-drf32
+script:
+  - tox
