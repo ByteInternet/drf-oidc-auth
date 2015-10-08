@@ -7,7 +7,7 @@ USER_SETTINGS = getattr(settings, 'OIDC_AUTH', None)
 DEFAULTS = {
     'JWT_AUTH_HEADER_PREFIX': 'JWT',
     'OIDC_ENDPOINT': None,
-    'OIDC_AUDIENCE': 'test',
+    'OIDC_AUDIENCES': None,
     # Number of seconds in the past valid tokens can be issued
     'OIDC_LEEWAY': 600,
     # Time before JWKS will be refreshed

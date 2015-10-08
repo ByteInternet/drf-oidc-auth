@@ -90,13 +90,13 @@ class JSONWebTokenAuthentication(BaseAuthentication):
         if id_token.get('iss') != self.issuer:
             msg = _('Invalid Authorization header. Invalid JWT issuer.')
             raise AuthenticationFailed(msg)
-        if api_settings.OIDC_AUDIENCE not in id_token.get('aud', []):
+        if not any(aud in api_settings.OIDC_AUDIENCES for aud in id_token.get('aud', [])):
             msg = _('Invalid Authorization header. Invalid JWT audience.')
             raise AuthenticationFailed(msg)
         if len(id_token['aud']) > 1 and 'azp' not in id_token:
             msg = _('Invalid Authorization header. Missing JWT authorized party.')
             raise AuthenticationFailed(msg)
-        if 'azp' in id_token and id_token['azp'] != api_settings.OIDC_AUDIENCE:
+        if 'azp' in id_token and id_token['azp'] not in api_settings.OIDC_AUDIENCES:
             msg = _('Invalid Authorization header. Invalid JWT authorized party.')
             raise AuthenticationFailed(msg)
 

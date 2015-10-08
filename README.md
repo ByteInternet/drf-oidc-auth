@@ -42,7 +42,7 @@ OIDC_AUTH = {
     'OIDC_ENDPOINT': 'https://accounts.google.com',
 
     # Accepted audiences the ID Tokens can be issued to
-    'OIDC_AUDIENCE': 'myapp',
+    'OIDC_AUDIENCES': ('myapp',),
     
     # (Optional) Function that resolves id_token into user.
     # This function receives an id_token dict and expects to return

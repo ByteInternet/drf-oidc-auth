@@ -76,7 +76,7 @@ class TestJWTAuthentication(TestCase):
                                                            text=keys.dump_jwks()))
 
         api_settings.OIDC_ENDPOINT = 'http://example.com'
-        api_settings.OIDC_AUDIENCE = 'you'
+        api_settings.OIDC_AUDIENCES = ('you',)
 
     def test_using_valid_jwt(self):
         auth = 'JWT ' + make_id_token(self.user.username)
