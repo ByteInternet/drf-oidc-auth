@@ -75,9 +75,6 @@ class TestJWTAuthentication(TestCase):
         self.patch('jwkest.jwk.request', return_value=Mock(status_code=200,
                                                            text=keys.dump_jwks()))
 
-        api_settings.OIDC_ENDPOINT = 'http://example.com'
-        api_settings.OIDC_AUDIENCES = ('you',)
-
     def test_using_valid_jwt(self):
         auth = 'JWT ' + make_id_token(self.user.username)
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
