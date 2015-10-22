@@ -1,4 +1,5 @@
 from django.contrib.auth.models import User
+import json
 from rest_framework.permissions import IsAuthenticated
 from django.conf.urls import url
 from django.http import HttpResponse
@@ -6,8 +7,8 @@ from django.test import TestCase
 from jwkest.jwk import RSAKey, KEYS
 from jwkest.jws import JWS
 from rest_framework.views import APIView
-from oidc_auth.authentication import JSONWebTokenAuthentication
-from oidc_auth.settings import api_settings
+from requests import Response, HTTPError, ConnectionError
+from oidc_auth.authentication import JSONWebTokenAuthentication, BearerTokenAuthentication
 import sys
 if sys.version_info > (3,):
     long = int
@@ -19,7 +20,7 @@ except ImportError:
 
 class MockView(APIView):
     permission_classes = (IsAuthenticated,)
-    authentication_classes = (JSONWebTokenAuthentication,)
+    authentication_classes = (JSONWebTokenAuthentication, BearerTokenAuthentication)
 
     def get(self, request):
         return HttpResponse('a')
@@ -56,8 +57,29 @@ def make_id_token(sub,
     ))
 
 
-class TestJWTAuthentication(TestCase):
-    urls = 'tests.test_authentication'
+class FakeRequests(object):
+    def __init__(self):
+        self.responses = {}
+
+    def set_response(self, url, content, status_code=200):
+        self.responses[url] = (status_code, json.dumps(content))
+
+    def get(self, url, *args, **kwargs):
+        wanted_response = self.responses.get(url)
+        if not wanted_response:
+            status_code, content = 404, ''
+        else:
+            status_code, content = wanted_response
+
+        response = Response()
+        response._content = content.encode('utf-8')
+        response.status_code = status_code
+
+        return response
+
+
+class AuthenticationTestCase(TestCase):
+    urls = __name__
 
     def patch(self, thing_to_mock, **kwargs):
         patcher = patch(thing_to_mock, **kwargs)
@@ -67,14 +89,74 @@ class TestJWTAuthentication(TestCase):
 
     def setUp(self):
         self.user = User.objects.create(username='henk')
-        mock_get = self.patch('requests.get')
-        mock_get.return_value.json.return_value = {"jwks_uri": "http://example.com/jwks",
-                                                   "issuer": "http://example.com"}
+        self.responder = FakeRequests()
+        self.responder.set_response("http://example.com/.well-known/openid-configuration",
+                                    {"jwks_uri": "http://example.com/jwks",
+                                     "issuer": "http://example.com",
+                                     "userinfo_endpoint": "http://example.com/userinfo"})
+        self.mock_get = self.patch('requests.get')
+        self.mock_get.side_effect = self.responder.get
         keys = KEYS()
         keys.add({'key': key, 'kty': 'RSA', 'kid': key.kid})
         self.patch('jwkest.jwk.request', return_value=Mock(status_code=200,
                                                            text=keys.dump_jwks()))
 
+
+class TestBearerAuthentication(AuthenticationTestCase):
+    def test_using_valid_bearer_token(self):
+        self.responder.set_response('http://example.com/userinfo', {'sub': self.user.username})
+        auth = 'Bearer abcdefg'
+        resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
+        self.assertEqual(resp.content.decode(), 'a')
+        self.assertEqual(resp.status_code, 200)
+        self.mock_get.assert_called_with('http://example.com/userinfo', headers={'Authorization': auth})
+
+    def test_cache_of_valid_bearer_token(self):
+        self.responder.set_response('http://example.com/userinfo', {'sub': self.user.username})
+        auth = 'Bearer egergerg'
+        resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
+        self.assertEqual(resp.status_code, 200)
+
+        # Token expires, but validity is cached
+        self.responder.set_response('http://example.com/userinfo', "", 401)
+        resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
+        self.assertEqual(resp.status_code, 200)
+
+    def test_using_invalid_bearer_token(self):
+        self.responder.set_response('http://example.com/userinfo', "", 401)
+        auth = 'Bearer hjikasdf'
+        resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
+        self.assertEqual(resp.status_code, 401)
+
+    def test_cache_of_invalid_bearer_token(self):
+        self.responder.set_response('http://example.com/userinfo', "", 401)
+        auth = 'Bearer feegrgeregreg'
+        resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
+        self.assertEqual(resp.status_code, 401)
+
+        # Token becomes valid, but invalidity is cached
+        self.responder.set_response('http://example.com/userinfo', {'sub': self.user.username})
+        resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
+        self.assertEqual(resp.status_code, 401)
+
+    def test_using_malformed_bearer_token(self):
+        auth = 'Bearer abc def'
+        resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
+        self.assertEqual(resp.status_code, 401)
+
+    def test_using_missing_bearer_token(self):
+        auth = 'Bearer'
+        resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
+        self.assertEqual(resp.status_code, 401)
+
+    def test_using_inaccessible_userinfo_endpoint(self):
+        self.mock_get.side_effect = ConnectionError
+        auth = 'Bearer'
+        resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
+        self.assertEqual(resp.status_code, 401)
+
+
+class TestJWTAuthentication(AuthenticationTestCase):
     def test_using_valid_jwt(self):
         auth = 'JWT ' + make_id_token(self.user.username)
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)

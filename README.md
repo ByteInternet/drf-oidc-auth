@@ -3,13 +3,10 @@
 This package contains an authentication mechanism for authenticating 
 users of a REST API using tokens obtained from OpenID Connect.
 
-Currently, it only supports JWT tokens, which will be validated against 
-the public keys of an OpenID connect authorization service.
-
-In the future this might be expanded to accepting bearer (access) tokens 
-from the authentication service, but since there is no standardized way 
-of verifying these bearer tokens against the auth server this is omitted 
-for now. 
+Currently, it only supports JWT and Bearer tokens. JWT tokens will be 
+validated against the public keys of an OpenID connect authorization 
+service. Bearer tokens are used to retrieve the OpenID UserInfo for a
+user to identify him.
 
 # Installation
 
@@ -29,6 +26,7 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         # ...
         'oidc_auth.authentication.JSONWebTokenAuthentication',
+        'oidc_auth.authentication.BearerTokenAuthentication',
     ),
 }
 ```
@@ -57,9 +55,15 @@ OIDC_AUTH = {
     
     # (Optional) Time before signing keys will be refreshed (default 24 hrs)
     'OIDC_JWKS_EXPIRATION_TIME': 24*60*60
+
+    # (Optional) Time before bearer token validity is verified again (default 10 minutes)
+    'OIDC_BEARER_TOKEN_EXPIRATION_TIME': 10*60,
     
-    # (Optional) Token prefix in authorization header (default 'JWT')
+    # (Optional) Token prefix in JWT authorization header (default 'JWT')
     'JWT_AUTH_HEADER_PREFIX': 'JWT',
+    
+    # (Optional) Token prefix in Bearer authorization header (default 'Bearer')
+    'JWT_AUTH_HEADER_PREFIX': 'Bearer',
 }
 ```
 
