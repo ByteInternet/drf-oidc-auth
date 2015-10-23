@@ -63,7 +63,7 @@ OIDC_AUTH = {
     'JWT_AUTH_HEADER_PREFIX': 'JWT',
     
     # (Optional) Token prefix in Bearer authorization header (default 'Bearer')
-    'JWT_AUTH_HEADER_PREFIX': 'Bearer',
+    'BEARER_AUTH_HEADER_PREFIX': 'Bearer',
 }
 ```
 
