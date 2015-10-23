@@ -40,8 +40,9 @@ class BearerTokenAuthentication(BaseOidcAuthentication):
         if bearer_token is None:
             return None
 
-        userinfo = self.get_userinfo(bearer_token)
-        if not userinfo:
+        try:
+            userinfo = self.get_userinfo(bearer_token)
+        except HTTPError:
             msg = _('Invalid Authorization header. Unable to verify bearer token')
             raise AuthenticationFailed(msg)
 
@@ -67,12 +68,9 @@ class BearerTokenAuthentication(BaseOidcAuthentication):
 
     @cache(ttl=api_settings.OIDC_BEARER_TOKEN_EXPIRATION_TIME)
     def get_userinfo(self, token):
-        try:
-            response = requests.get(self.oidc_config['userinfo_endpoint'],
-                                    headers={'Authorization': 'Bearer {0}'.format(token.decode('ascii'))})
-            response.raise_for_status()
-        except HTTPError:
-            return None
+        response = requests.get(self.oidc_config['userinfo_endpoint'],
+                                headers={'Authorization': 'Bearer {0}'.format(token.decode('ascii'))})
+        response.raise_for_status()
 
         return response.json()
 

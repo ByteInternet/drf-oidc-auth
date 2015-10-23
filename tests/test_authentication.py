@@ -137,7 +137,7 @@ class TestBearerAuthentication(AuthenticationTestCase):
         # Token becomes valid, but invalidity is cached
         self.responder.set_response('http://example.com/userinfo', {'sub': self.user.username})
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
-        self.assertEqual(resp.status_code, 401)
+        self.assertEqual(resp.status_code, 200)
 
     def test_using_malformed_bearer_token(self):
         auth = 'Bearer abc def'
