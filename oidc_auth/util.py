@@ -1,16 +1,5 @@
-from heapq import heappop, heappush
+from collections import deque
 import time
-
-
-class ExpirationQueueElement(object):
-    __slots__ = ('expiration', 'key')
-
-    def __init__(self, expiration, key):
-        self.expiration = expiration
-        self.key = key
-
-    def __lt__(self, other):
-        return self.expiration < other.expiration
 
 
 class cache(object):
@@ -18,22 +7,21 @@ class cache(object):
     """
     def __init__(self, ttl):
         self.ttl = ttl
-        # Heap that contains keys in order of expiration
-        self.expiration_queue = []
+        # Queue that contains tuples of (expiration_time, key) in order of expiration
+        self.expiration_queue = deque()
         self.cached_values = {}
 
     def purge_expired(self, now):
-        while len(self.expiration_queue) > 0 and self.expiration_queue[0].expiration < now:
-            expired = heappop(self.expiration_queue)
-            del self.cached_values[expired.key]
+        while len(self.expiration_queue) > 0 and self.expiration_queue[0][0] < now:
+            expired = self.expiration_queue.popleft()
+            del self.cached_values[expired[1]]
 
     def add_to_cache(self, key, value, now):
-        # import pdb; pdb.set_trace()
-        # print("Adding %s to %s" % (key, self.cached_values))
         assert key not in self.cached_values, "Re-adding the same key breaks proper expiration"
-        element = ExpirationQueueElement(now + self.ttl, key)
         self.cached_values[key] = value
-        heappush(self.expiration_queue, element)
+        # Since TTL is constant, expiration happens in order of addition to queue,
+        # so queue is always ordered by expiration time.
+        self.expiration_queue.append((now + self.ttl, key))
 
     def get_from_cache(self, key):
         return self.cached_values[key]
