@@ -7,6 +7,7 @@ from jwkest import JWKESTException
 from jwkest.jwk import KEYS
 from jwkest.jws import JWS
 import requests
+from requests.exceptions import HTTPError
 from rest_framework.authentication import BaseAuthentication, get_authorization_header
 from rest_framework.exceptions import AuthenticationFailed
 import six
@@ -25,7 +26,56 @@ def get_user_by_id(id_token):
     return user
 
 
-class JSONWebTokenAuthentication(BaseAuthentication):
+class BaseOidcAuthentication(BaseAuthentication):
+    @cached_property
+    def oidc_config(self):
+        return requests.get(api_settings.OIDC_ENDPOINT + '/.well-known/openid-configuration').json()
+
+
+class BearerTokenAuthentication(BaseOidcAuthentication):
+    www_authenticate_realm = 'api'
+
+    def authenticate(self, request):
+        bearer_token = self.get_bearer_token(request)
+        if bearer_token is None:
+            return None
+
+        try:
+            userinfo = self.get_userinfo(bearer_token)
+        except HTTPError:
+            msg = _('Invalid Authorization header. Unable to verify bearer token')
+            raise AuthenticationFailed(msg)
+
+        user = api_settings.OIDC_RESOLVE_USER_FUNCTION(userinfo)
+
+        return user, userinfo
+
+    def get_bearer_token(self, request):
+        auth = get_authorization_header(request).split()
+        auth_header_prefix = api_settings.BEARER_AUTH_HEADER_PREFIX.lower()
+
+        if not auth or smart_text(auth[0].lower()) != auth_header_prefix:
+            return None
+
+        if len(auth) == 1:
+            msg = _('Invalid Authorization header. No credentials provided')
+            raise AuthenticationFailed(msg)
+        elif len(auth) > 2:
+            msg = _('Invalid Authorization header. Credentials string should not contain spaces.')
+            raise AuthenticationFailed(msg)
+
+        return auth[1]
+
+    @cache(ttl=api_settings.OIDC_BEARER_TOKEN_EXPIRATION_TIME)
+    def get_userinfo(self, token):
+        response = requests.get(self.oidc_config['userinfo_endpoint'],
+                                headers={'Authorization': 'Bearer {0}'.format(token.decode('ascii'))})
+        response.raise_for_status()
+
+        return response.json()
+
+
+class JSONWebTokenAuthentication(BaseOidcAuthentication):
     """ Token based authentication using the JSON Web Token standard
     """
     www_authenticate_realm = 'api'
@@ -58,9 +108,6 @@ class JSONWebTokenAuthentication(BaseAuthentication):
 
         return auth[1]
 
-    @cached_property
-    def oidc_config(self):
-        return requests.get(api_settings.OIDC_ENDPOINT + '/.well-known/openid-configuration').json()
 
     @cache(ttl=api_settings.OIDC_JWKS_EXPIRATION_TIME)
     def jwks(self):

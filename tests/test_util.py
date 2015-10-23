@@ -5,7 +5,7 @@ from oidc_auth.util import cache
 
 class TestCacheDecorator(TestCase):
     @cache(1)
-    def mymethod(self):
+    def mymethod(self, *args):
         return random()
 
     @cache(1)
@@ -16,11 +16,18 @@ class TestCacheDecorator(TestCase):
     def notcached(self):
         return random()
 
-    def test_that_result_of_method_is_memoized(self):
-        x = self.mymethod()
-        self.assertEqual(x, self.mymethod())
+    @cache(1)
+    def return_none(self):
+        return None
 
-    def test_that_exceptions_are_raised_first_time(self):
+    def test_that_result_of_method_is_memoized(self):
+        x = self.mymethod('a')
+        y = self.mymethod('b')
+        self.assertEqual(x, self.mymethod('a'))
+        self.assertEqual(y, self.mymethod('b'))
+        self.assertNotEqual(x, y)
+
+    def test_that_exceptions_are_raised(self):
         with self.assertRaises(RuntimeError):
             self.failing()
 
@@ -29,17 +36,24 @@ class TestCacheDecorator(TestCase):
         # This will fail sometimes when the RNG returns two equal numbers...
         self.assertNotEqual(x, self.notcached())
 
-    def disabled_slow_test_that_last_cache_value_is_preserved_if_subsequent_calls_fail(self):
-        from time import sleep
-        runs = [0]  # Store runs in array so it can be changed within m()
-        @cache(1)
-        def m(self):
-            if runs[0] > 0:
-                raise RuntimeError()
-            runs[0] += 1
-            return random()
+    def test_that_cache_can_store_None(self):
+        self.assertIsNone(self.return_none())
+        self.assertIsNone(self.return_none())
 
-        x = m(self)
-        self.assertEqual(x, m(self))
-        sleep(1)
-        self.assertEqual(x, m(self))
+    def test_that_expiration_works_as_expected(self):
+        c = cache(10)
+        c.add_to_cache(('abcde',), 'one', 5)
+        c.add_to_cache(('fghij',), 'two', 6)
+        c.add_to_cache(('klmno',), 'three', 7)
+        self.assertEqual(c.get_from_cache(('abcde',)), 'one')
+        self.assertEqual(c.get_from_cache(('fghij',)), 'two')
+        self.assertEqual(c.get_from_cache(('klmno',)), 'three')
+        c.purge_expired(14)
+        self.assertEqual(c.get_from_cache(('abcde',)), 'one')
+        c.purge_expired(16)
+        self.assertRaises(KeyError, c.get_from_cache, ('abcde',))
+        self.assertEqual(c.get_from_cache(('fghij',)), 'two')
+
+        c.purge_expired(20)
+        self.assertRaises(KeyError, c.get_from_cache, ('fghij',))
+        self.assertRaises(KeyError, c.get_from_cache, ('klmno',))
