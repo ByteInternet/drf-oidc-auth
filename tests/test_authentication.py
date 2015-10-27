@@ -134,7 +134,7 @@ class TestBearerAuthentication(AuthenticationTestCase):
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 401)
 
-        # Token becomes valid, but invalidity is cached
+        # Token becomes valid
         self.responder.set_response('http://example.com/userinfo', {'sub': self.user.username})
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 200)
