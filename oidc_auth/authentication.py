@@ -16,7 +16,7 @@ from .settings import api_settings
 from django.utils.translation import ugettext as _
 
 
-def get_user_by_id(id_token):
+def get_user_by_id(request, id_token):
     User = get_user_model()
     try:
         user = User.objects.get_by_natural_key(id_token.get('sub'))
@@ -46,7 +46,7 @@ class BearerTokenAuthentication(BaseOidcAuthentication):
             msg = _('Invalid Authorization header. Unable to verify bearer token')
             raise AuthenticationFailed(msg)
 
-        user = api_settings.OIDC_RESOLVE_USER_FUNCTION(userinfo)
+        user = api_settings.OIDC_RESOLVE_USER_FUNCTION(request, userinfo)
 
         return user, userinfo
 
@@ -88,7 +88,7 @@ class JSONWebTokenAuthentication(BaseOidcAuthentication):
         payload = self.decode_jwt(jwt_value)
         self.validate_claims(payload)
 
-        user = api_settings.OIDC_RESOLVE_USER_FUNCTION(payload)
+        user = api_settings.OIDC_RESOLVE_USER_FUNCTION(request, payload)
 
         return user, payload
 

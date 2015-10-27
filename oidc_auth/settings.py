@@ -14,7 +14,7 @@ DEFAULTS = {
     # Time before JWKS will be refreshed
     'OIDC_JWKS_EXPIRATION_TIME': 24*60*60,
 
-    # Function to resolve user from token or userinfo
+    # Function to resolve user from request and token or userinfo
     'OIDC_RESOLVE_USER_FUNCTION': 'oidc_auth.authentication.get_user_by_id',
 
     # Time before bearer token validity is verified again
