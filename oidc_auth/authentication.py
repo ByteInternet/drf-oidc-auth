@@ -76,8 +76,8 @@ class BearerTokenAuthentication(BaseOidcAuthentication):
 
 
 class JSONWebTokenAuthentication(BaseOidcAuthentication):
-    """ Token based authentication using the JSON Web Token standard
-    """
+    """Token based authentication using the JSON Web Token standard"""
+
     www_authenticate_realm = 'api'
 
     def authenticate(self, request):
@@ -108,7 +108,6 @@ class JSONWebTokenAuthentication(BaseOidcAuthentication):
 
         return auth[1]
 
-
     @cache(ttl=api_settings.OIDC_JWKS_EXPIRATION_TIME)
     def jwks(self):
         keys = KEYS()
@@ -129,6 +128,9 @@ class JSONWebTokenAuthentication(BaseOidcAuthentication):
 
         return id_token
 
+    def get_audiences(self, id_token):
+        return api_settings.OIDC_AUDIENCES
+
     def validate_claims(self, id_token):
         if isinstance(id_token.get('aud'), six.string_types):
             # Support for multiple audiences
@@ -137,7 +139,7 @@ class JSONWebTokenAuthentication(BaseOidcAuthentication):
         if id_token.get('iss') != self.issuer:
             msg = _('Invalid Authorization header. Invalid JWT issuer.')
             raise AuthenticationFailed(msg)
-        if not any(aud in api_settings.OIDC_AUDIENCES for aud in id_token.get('aud', [])):
+        if not any(aud in self.get_audiences(id_token) for aud in id_token.get('aud', [])):
             msg = _('Invalid Authorization header. Invalid JWT audience.')
             raise AuthenticationFailed(msg)
         if len(id_token['aud']) > 1 and 'azp' not in id_token:
