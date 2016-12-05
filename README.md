@@ -54,7 +54,7 @@ OIDC_AUTH = {
     'OIDC_LEEWAY': 600,
     
     # (Optional) Time before signing keys will be refreshed (default 24 hrs)
-    'OIDC_JWKS_EXPIRATION_TIME': 24*60*60
+    'OIDC_JWKS_EXPIRATION_TIME': 24*60*60,
 
     # (Optional) Time before bearer token validity is verified again (default 10 minutes)
     'OIDC_BEARER_TOKEN_EXPIRATION_TIME': 10*60,
