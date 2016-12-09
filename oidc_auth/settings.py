@@ -6,13 +6,14 @@ USER_SETTINGS = getattr(settings, 'OIDC_AUTH', None)
 
 DEFAULTS = {
     'OIDC_ENDPOINT': None,
+    'OIDC_ENDPOINTS': {},
     'OIDC_AUDIENCES': None,
 
     # Number of seconds in the past valid tokens can be issued
     'OIDC_LEEWAY': 600,
 
     # Time before JWKS will be refreshed
-    'OIDC_JWKS_EXPIRATION_TIME': 24*60*60,
+    'OIDC_JWKS_EXPIRATION_TIME': 24 * 60 * 60,
 
     # Function to resolve user from request and token or userinfo
     'OIDC_RESOLVE_USER_FUNCTION': 'oidc_auth.authentication.get_user_by_id',
