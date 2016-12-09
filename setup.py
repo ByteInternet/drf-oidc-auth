@@ -11,8 +11,8 @@ setup(
     description='OpenID Connect authentication for Django Rest Framework',
     install_requires=[
         'pyjwkest>=1.0.3',
-        'django>=1.6.0',
-        'djangorestframework>=2.4.0',
+        'django>=1.8.0',
+        'djangorestframework>=3.0.0',
     ],
     classifiers=[
         'Development Status :: 4 - Beta',

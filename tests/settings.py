@@ -9,7 +9,7 @@ INSTALLED_APPS = (
     'django.contrib.auth',
     'django.contrib.contenttypes',
 )
-ROOT_URLCONF = 'urls'
+ROOT_URLCONF = 'tests.test_authentication'
 OIDC_AUTH = {
     'OIDC_ENDPOINT': 'http://example.com',
     'OIDC_AUDIENCES': ('you',),
