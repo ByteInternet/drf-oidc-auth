@@ -7,7 +7,7 @@ setup(
     url='https://github.com/ByteInternet/drf-oidc-auth',
     license='MIT',
     author='Maarten van Schaik',
-    author_email='maarten@byte.nl',
+    author_email='support@byte.nl',
     description='OpenID Connect authentication for Django Rest Framework',
     install_requires=[
         'pyjwkest>=1.0.3',
