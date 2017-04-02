@@ -23,6 +23,9 @@ DEFAULTS = {
 
     'JWT_AUTH_HEADER_PREFIX': 'JWT',
     'BEARER_AUTH_HEADER_PREFIX': 'Bearer',
+
+    # URL of the OpenID Provider's UserInfo Endpoint
+    'USERINFO_ENDPOINT': None,
 }
 
 # List of settings that may be in string import notation.

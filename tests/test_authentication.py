@@ -3,21 +3,22 @@ import json
 
 from jwkest import long_to_base64
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import AuthenticationFailed
 from django.conf.urls import url
 from django.http import HttpResponse
 from django.test import TestCase
 from jwkest.jwk import RSAKey, KEYS
 from jwkest.jws import JWS
 from rest_framework.views import APIView
-from requests import Response, HTTPError, ConnectionError
+from requests import Response, ConnectionError
 from oidc_auth.authentication import JSONWebTokenAuthentication, BearerTokenAuthentication
 import sys
 if sys.version_info > (3,):
     long = int
 try:
-    from unittest.mock import patch, Mock
+    from unittest.mock import patch, Mock, PropertyMock
 except ImportError:
-    from mock import patch, Mock
+    from mock import patch, Mock, PropertyMock
 
 
 class MockView(APIView):
@@ -106,6 +107,25 @@ class AuthenticationTestCase(TestCase):
 
 
 class TestBearerAuthentication(AuthenticationTestCase):
+    def setUp(self):
+        super(TestBearerAuthentication, self).setUp()
+        self.openid_configuration = {
+            'issuer': 'http://accounts.example.com/dex',
+            'authorization_endpoint': 'http://accounts.example.com/dex/auth',
+            'token_endpoint': 'http://accounts.example.com/dex/token',
+            'jwks_uri': 'http://accounts.example.com/dex/keys',
+            'response_types_supported': ['code'],
+            'subject_types_supported': ['public'],
+            'id_token_signing_alg_values_supported': ['RS256'],
+            'scopes_supported': ['openid', 'email', 'groups', 'profile', 'offline_access'],
+            'token_endpoint_auth_methods_supported': ['client_secret_basic'],
+            'claims_supported': [
+                'aud', 'email', 'email_verified', 'exp', 'iat', 'iss', 'locale',
+                'name', 'sub'
+            ],
+            'userinfo_endpoint': 'http://sellers.example.com/v1/sellers/'
+        }
+
     def test_using_valid_bearer_token(self):
         self.responder.set_response('http://example.com/userinfo', {'sub': self.user.username})
         auth = 'Bearer abcdefg'
@@ -157,6 +177,25 @@ class TestBearerAuthentication(AuthenticationTestCase):
         auth = 'Bearer'
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 401)
+
+    def test_get_user_info_endpoint(self):
+        with patch('oidc_auth.authentication.BaseOidcAuthentication.oidc_config', new_callable=PropertyMock) as oidc_config_mock:
+            oidc_config_mock.return_value = self.openid_configuration
+            authentication = BearerTokenAuthentication()
+            response_mock = Mock(return_value=Mock(status_code=200,
+                                 json=Mock(return_value={}),
+                                 raise_for_status=Mock(return_value=None)))
+            with patch('oidc_auth.authentication.requests.get', response_mock):
+                result = authentication.get_userinfo(b'token')
+                assert result == {}
+
+    def test_get_user_info_endpoint_with_missing_field(self):
+        self.openid_configuration.pop('userinfo_endpoint')
+        with patch('oidc_auth.authentication.BaseOidcAuthentication.oidc_config', new_callable=PropertyMock) as oidc_config_mock:
+            oidc_config_mock.return_value = self.openid_configuration
+            authentication = BearerTokenAuthentication()
+            with self.assertRaisesMessage(AuthenticationFailed, 'userinfo_endpoint'):
+                authentication.get_userinfo(b'faketoken')
 
 
 class TestJWTAuthentication(AuthenticationTestCase):
