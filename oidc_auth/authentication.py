@@ -122,7 +122,7 @@ class JSONWebTokenAuthentication(BaseOidcAuthentication):
         keys = self.jwks()
         try:
             id_token = JWS().verify_compact(jwt_value, keys=keys)
-        except JWKESTException:
+        except (JWKESTException, ValueError):
             msg = _('Invalid Authorization header. JWT Signature verification failed.')
             raise AuthenticationFailed(msg)
 
