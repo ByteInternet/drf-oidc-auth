@@ -145,9 +145,6 @@ class JSONWebTokenAuthentication(BaseOidcAuthentication):
         if len(id_token['aud']) > 1 and 'azp' not in id_token:
             msg = _('Invalid Authorization header. Missing JWT authorized party.')
             raise AuthenticationFailed(msg)
-        if 'azp' in id_token and id_token['azp'] not in api_settings.OIDC_AUDIENCES:
-            msg = _('Invalid Authorization header. Invalid JWT authorized party.')
-            raise AuthenticationFailed(msg)
 
         utc_timestamp = timegm(datetime.datetime.utcnow().utctimetuple())
         if utc_timestamp > id_token.get('exp', 0):
