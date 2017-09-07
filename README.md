@@ -1,3 +1,9 @@
+# 07-Sept-2017
+* Replaced `User.objects.get_by_natural_key` with `User.objects.get_or_create`
+* Forced username to lower case to be consistent with django-auth-ldap
+* Requesting pull to the original project.
+* Otherwise, awesome project from which this was forked!! Thank you [ByteInternet](https://github.com/ByteInternet/drf-oidc-auth)
+
 # OpenID Connect authentication for Django Rest Framework
 
 This package contains an authentication mechanism for authenticating 
