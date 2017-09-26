@@ -17,9 +17,8 @@ from django.utils.translation import ugettext as _
 
 
 def get_user_by_id(request, id_token):
-    """Force to lower case to be consistent with django-auth-ldap"""
     User = get_user_model()
-    try:
+    if api_settings.CREATE_USER:
         email = id_token.get('email', None)
         first_name = id_token.get('given_name', '')
         last_name = id_token.get('family_name', '')
@@ -34,9 +33,12 @@ def get_user_by_id(request, id_token):
                                                        defaults={'first_name': first_name,
                                                                  'last_name': last_name,
                                                                  })
-    except User.DoesNotExist:
-        msg = _('Invalid Authorization header. User not found.')
-        raise AuthenticationFailed(msg)
+    else:
+        try:
+            user = User.objects.get_by_natural_key(id_token.get('sub'))
+        except User.DoesNotExist:
+            msg = _('Invalid Authorization header. User not found.')
+            raise AuthenticationFailed(msg)
     return user
 
 
@@ -176,5 +178,3 @@ class JSONWebTokenAuthentication(BaseOidcAuthentication):
 
     def authenticate_header(self, request):
         return 'JWT realm="{0}"'.format(self.www_authenticate_realm)
-
-# vim: ai et ts=4 sw=4 sts=4 ru nu
