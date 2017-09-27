@@ -82,3 +82,4 @@ tox
 * Requires [Django REST Framework](http://www.django-rest-framework.org/)
 * And of course [Django](https://www.djangoproject.com/)
 * Inspired on [REST framework JWT Auth](https://github.com/GetBlimp/django-rest-framework-jwt)
+
