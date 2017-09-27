@@ -11,6 +11,7 @@ from jwkest.jws import JWS
 from rest_framework.views import APIView
 from requests import Response, HTTPError, ConnectionError
 from oidc_auth.authentication import JSONWebTokenAuthentication, BearerTokenAuthentication
+from oidc_auth.settings import api_settings
 import sys
 if sys.version_info > (3,):
     long = int
@@ -208,7 +209,10 @@ class TestJWTAuthentication(AuthenticationTestCase):
     def test_with_unknown_subject(self):
         auth = 'JWT ' + make_id_token(self.user.username + 'x')
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
-        self.assertEqual(resp.status_code, 401)
+        if not api_settings.CREATE_USER:
+            self.assertEqual(resp.status_code, 401)
+        else:
+            self.assertEqual(resp.status_code, 200)
 
     def test_with_multiple_audiences(self):
         auth = 'JWT ' + make_id_token(self.user.username, aud=['you', 'me'])

@@ -1,3 +1,5 @@
+import os
+
 SECRET_KEY='secret'
 DATABASES = {
     'default': {
@@ -13,4 +15,5 @@ ROOT_URLCONF = 'tests.test_authentication'
 OIDC_AUTH = {
     'OIDC_ENDPOINT': 'http://example.com',
     'OIDC_AUDIENCES': ('you',),
+    'CREATE_USER': os.getenv('CREATE_USER', 'yes') == 'yes',
 }

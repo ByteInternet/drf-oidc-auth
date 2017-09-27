@@ -64,6 +64,9 @@ OIDC_AUTH = {
     
     # (Optional) Token prefix in Bearer authorization header (default 'Bearer')
     'BEARER_AUTH_HEADER_PREFIX': 'Bearer',
+
+    # (Optional) Create user if user authenticates but is not in the local database (default False)
+    'CREATE_USER': False,
 }
 ```
 

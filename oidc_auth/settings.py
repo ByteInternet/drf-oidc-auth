@@ -23,6 +23,9 @@ DEFAULTS = {
 
     'JWT_AUTH_HEADER_PREFIX': 'JWT',
     'BEARER_AUTH_HEADER_PREFIX': 'Bearer',
+
+    # Create user if user authenticates but is not in the local database
+    'CREATE_USER': False,
 }
 
 # List of settings that may be in string import notation.
