@@ -27,7 +27,8 @@ def get_user_by_id(request, id_token):
 
 
 class BaseOidcAuthentication(BaseAuthentication):
-    @cached_property
+    @property
+    @cache(ttl=api_settings.OIDC_BEARER_TOKEN_EXPIRATION_TIME)
     def oidc_config(self):
         return requests.get(api_settings.OIDC_ENDPOINT + '/.well-known/openid-configuration').json()
 
