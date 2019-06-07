@@ -1,5 +1,6 @@
 from collections import deque
 import time
+import threading
 
 
 class cache(object):
@@ -10,6 +11,7 @@ class cache(object):
         # Queue that contains tuples of (expiration_time, key) in order of expiration
         self.expiration_queue = deque()
         self.cached_values = {}
+        self.lock = threading.Lock()
 
     def purge_expired(self, now):
         while len(self.expiration_queue) > 0 and self.expiration_queue[0][0] < now:
@@ -28,15 +30,15 @@ class cache(object):
 
     def __call__(self, fn):
         def wrapped(this, *args):
-            now = time.time()
-            self.purge_expired(now)
+            with self.lock:
+                now = time.time()
+                self.purge_expired(now)
+                try:
+                    cached_value = self.get_from_cache(args)
+                except KeyError:
+                    cached_value = fn(this, *args)
+                    self.add_to_cache(args, cached_value, now)
 
-            try:
-                cached_value = self.get_from_cache(args)
-            except KeyError:
-                cached_value = fn(this, *args)
-                self.add_to_cache(args, cached_value, now)
-
-            return cached_value
+                return cached_value
 
         return wrapped
