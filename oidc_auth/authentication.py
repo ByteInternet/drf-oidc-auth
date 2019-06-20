@@ -7,6 +7,7 @@ from jwkest import JWKESTException
 from jwkest.jwk import KEYS
 from jwkest.jws import JWS
 import requests
+from requests import request
 from requests.exceptions import HTTPError
 from rest_framework.authentication import BaseAuthentication, get_authorization_header
 from rest_framework.exceptions import AuthenticationFailed
@@ -109,11 +110,18 @@ class JSONWebTokenAuthentication(BaseOidcAuthentication):
 
         return auth[1]
 
-    @cache(ttl=api_settings.OIDC_JWKS_EXPIRATION_TIME)
     def jwks(self):
         keys = KEYS()
-        keys.load_from_url(self.oidc_config['jwks_uri'])
+        keys.load_jwks(self.jwks_data())
         return keys
+
+    @cache(ttl=api_settings.OIDC_JWKS_EXPIRATION_TIME)
+    def jwks_data(self):
+        r = request("GET", self.oidc_config['jwks_uri'], allow_redirects=True)
+        if r.status_code == 200:
+            return r.text
+        else:
+            raise Exception("HTTP Get error: %s" % r.status_code)
 
     @cached_property
     def issuer(self):

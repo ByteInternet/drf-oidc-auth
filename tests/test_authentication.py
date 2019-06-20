@@ -101,8 +101,8 @@ class AuthenticationTestCase(TestCase):
         self.mock_get.side_effect = self.responder.get
         keys = KEYS()
         keys.add({'key': key, 'kty': 'RSA', 'kid': key.kid})
-        self.patch('jwkest.jwk.request', return_value=Mock(status_code=200,
-                                                           text=keys.dump_jwks()))
+        self.patch('oidc_auth.authentication.request', return_value=Mock(status_code=200,
+                                                                         text=keys.dump_jwks()))
 
 
 class TestBearerAuthentication(AuthenticationTestCase):
