@@ -1,44 +1,26 @@
-from collections import deque
-import time
-import threading
+import functools
+
+from django.core.cache import caches
+from .settings import api_settings
 
 
 class cache(object):
     """ Cache decorator that memoizes the return value of a method for some time.
     """
+    cache_version = 1
+
     def __init__(self, ttl):
         self.ttl = ttl
-        # Queue that contains tuples of (expiration_time, key) in order of expiration
-        self.expiration_queue = deque()
-        self.cached_values = {}
-        self.lock = threading.Lock()
-
-    def purge_expired(self, now):
-        while len(self.expiration_queue) > 0 and self.expiration_queue[0][0] < now:
-            expired = self.expiration_queue.popleft()
-            del self.cached_values[expired[1]]
-
-    def add_to_cache(self, key, value, now):
-        assert key not in self.cached_values, "Re-adding the same key breaks proper expiration"
-        self.cached_values[key] = value
-        # Since TTL is constant, expiration happens in order of addition to queue,
-        # so queue is always ordered by expiration time.
-        self.expiration_queue.append((now + self.ttl, key))
-
-    def get_from_cache(self, key):
-        return self.cached_values[key]
 
     def __call__(self, fn):
+        @functools.wraps(fn)
         def wrapped(this, *args):
-            with self.lock:
-                now = time.time()
-                self.purge_expired(now)
-                try:
-                    cached_value = self.get_from_cache(args)
-                except KeyError:
-                    cached_value = fn(this, *args)
-                    self.add_to_cache(args, cached_value, now)
-
-                return cached_value
+            cache = caches[api_settings.OIDC_CACHE_NAME]
+            key = api_settings.OIDC_CACHE_PREFIX + '.'.join([fn.__name__] + list(map(str, args)))
+            cached_value = cache.get(key, version=self.cache_version)
+            if not cached_value:
+                cached_value = fn(this, *args)
+                cache.set(key, cached_value, timeout=self.ttl, version=self.cache_version)
+            return cached_value
 
         return wrapped
