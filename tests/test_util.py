@@ -39,21 +39,3 @@ class TestCacheDecorator(TestCase):
     def test_that_cache_can_store_None(self):
         self.assertIsNone(self.return_none())
         self.assertIsNone(self.return_none())
-
-    def test_that_expiration_works_as_expected(self):
-        c = cache(10)
-        c.add_to_cache(('abcde',), 'one', 5)
-        c.add_to_cache(('fghij',), 'two', 6)
-        c.add_to_cache(('klmno',), 'three', 7)
-        self.assertEqual(c.get_from_cache(('abcde',)), 'one')
-        self.assertEqual(c.get_from_cache(('fghij',)), 'two')
-        self.assertEqual(c.get_from_cache(('klmno',)), 'three')
-        c.purge_expired(14)
-        self.assertEqual(c.get_from_cache(('abcde',)), 'one')
-        c.purge_expired(16)
-        self.assertRaises(KeyError, c.get_from_cache, ('abcde',))
-        self.assertEqual(c.get_from_cache(('fghij',)), 'two')
-
-        c.purge_expired(20)
-        self.assertRaises(KeyError, c.get_from_cache, ('fghij',))
-        self.assertRaises(KeyError, c.get_from_cache, ('klmno',))
