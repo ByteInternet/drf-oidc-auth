@@ -118,10 +118,8 @@ class JSONWebTokenAuthentication(BaseOidcAuthentication):
     @cache(ttl=api_settings.OIDC_JWKS_EXPIRATION_TIME)
     def jwks_data(self):
         r = request("GET", self.oidc_config['jwks_uri'], allow_redirects=True)
-        if r.status_code == 200:
-            return r.text
-        else:
-            raise Exception("HTTP Get error: %s" % r.status_code)
+        r.raise_for_status()
+        return r.text
 
     @cached_property
     def issuer(self):
