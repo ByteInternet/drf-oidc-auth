@@ -6,11 +6,15 @@ from .settings import api_settings
 
 class cache(object):
     """ Cache decorator that memoizes the return value of a method for some time.
-    """
-    cache_version = 1
 
-    def __init__(self, ttl):
+    Increment the cache_version everytime your method's implementation changes in such a way that it returns values
+    that are not backwards compatible. For more information, see the Django cache documentation:
+    https://docs.djangoproject.com/en/2.2/topics/cache/#cache-versioning
+    """
+
+    def __init__(self, ttl, cache_version=1):
         self.ttl = ttl
+        self.cache_version = cache_version
 
     def __call__(self, fn):
         @functools.wraps(fn)
