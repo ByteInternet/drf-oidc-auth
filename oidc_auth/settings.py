@@ -23,6 +23,10 @@ DEFAULTS = {
 
     'JWT_AUTH_HEADER_PREFIX': 'JWT',
     'BEARER_AUTH_HEADER_PREFIX': 'Bearer',
+
+    # The Django cache to use
+    'OIDC_CACHE_NAME': 'default',
+    'OIDC_CACHE_PREFIX': 'oidc_auth.'
 }
 
 # List of settings that may be in string import notation.

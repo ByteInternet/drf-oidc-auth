@@ -1,6 +1,13 @@
 from random import random
 from unittest import TestCase
+
+from oidc_auth.settings import api_settings
 from oidc_auth.util import cache
+
+try:
+    from unittest.mock import patch, Mock, ANY
+except ImportError:
+    from mock import patch, Mock, ANY
 
 
 class TestCacheDecorator(TestCase):
@@ -40,20 +47,36 @@ class TestCacheDecorator(TestCase):
         self.assertIsNone(self.return_none())
         self.assertIsNone(self.return_none())
 
-    def test_that_expiration_works_as_expected(self):
-        c = cache(10)
-        c.add_to_cache(('abcde',), 'one', 5)
-        c.add_to_cache(('fghij',), 'two', 6)
-        c.add_to_cache(('klmno',), 'three', 7)
-        self.assertEqual(c.get_from_cache(('abcde',)), 'one')
-        self.assertEqual(c.get_from_cache(('fghij',)), 'two')
-        self.assertEqual(c.get_from_cache(('klmno',)), 'three')
-        c.purge_expired(14)
-        self.assertEqual(c.get_from_cache(('abcde',)), 'one')
-        c.purge_expired(16)
-        self.assertRaises(KeyError, c.get_from_cache, ('abcde',))
-        self.assertEqual(c.get_from_cache(('fghij',)), 'two')
+    @patch('oidc_auth.util.caches')
+    def test_uses_django_cache_uncached(self, caches):
+        caches['default'].get.return_value = None
+        self.mymethod()
+        caches['default'].get.assert_called_with('oidc_auth.mymethod', version=1)
+        caches['default'].set.assert_called_with('oidc_auth.mymethod', ANY, timeout=1, version=1)
 
-        c.purge_expired(20)
-        self.assertRaises(KeyError, c.get_from_cache, ('fghij',))
-        self.assertRaises(KeyError, c.get_from_cache, ('klmno',))
+    @patch('oidc_auth.util.caches')
+    def test_uses_django_cache_cached(self, caches):
+        return_value = random()
+        caches['default'].get.return_value = return_value
+        self.assertEqual(return_value, self.mymethod())
+        caches['default'].get.assert_called_with('oidc_auth.mymethod', version=1)
+        self.assertFalse(caches['default'].set.called)
+
+    @patch.object(api_settings, 'OIDC_CACHE_NAME', 'other')
+    def test_respects_cache_name(self):
+        caches = {
+            'default': Mock(),
+            'other': Mock(),
+        }
+        with patch('oidc_auth.util.caches', caches):
+            self.mymethod()
+            self.assertTrue(caches['other'].get.called)
+            self.assertFalse(caches['default'].get.called)
+
+    @patch.object(api_settings, 'OIDC_CACHE_PREFIX', 'some-other-prefix.')
+    @patch('oidc_auth.util.caches')
+    def test_respects_cache_prefix(self, caches):
+        caches['default'].get.return_value = None
+        self.mymethod()
+        caches['default'].get.assert_called_once_with('some-other-prefix.mymethod', version=1)
+        caches['default'].set.assert_called_once_with('some-other-prefix.mymethod', ANY, timeout=1, version=1)

@@ -64,6 +64,12 @@ OIDC_AUTH = {
     
     # (Optional) Token prefix in Bearer authorization header (default 'Bearer')
     'BEARER_AUTH_HEADER_PREFIX': 'Bearer',
+
+    # (Optional) Which Django cache to use
+    'OIDC_CACHE_NAME': 'default',
+
+    # (Optional) A cache key prefix when storing and retrieving cached values
+    'OIDC_CACHE_PREFIX': 'oidc_auth.',
 }
 ```
 
