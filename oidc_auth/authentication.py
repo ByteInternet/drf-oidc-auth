@@ -6,6 +6,7 @@ from django.utils.functional import cached_property
 from jwkest import JWKESTException
 from jwkest.jwk import KEYS
 from jwkest.jws import JWS
+import logging
 import requests
 from requests import request
 from requests.exceptions import HTTPError
@@ -15,6 +16,8 @@ import six
 from .util import cache
 from .settings import api_settings
 from django.utils.translation import ugettext as _
+
+logger = logging.Logger(__name__)
 
 
 def get_user_by_id(request, id_token):
@@ -131,6 +134,7 @@ class JSONWebTokenAuthentication(BaseOidcAuthentication):
             id_token = JWS().verify_compact(jwt_value, keys=keys)
         except (JWKESTException, ValueError):
             msg = _('Invalid Authorization header. JWT Signature verification failed.')
+            logger.exception(msg)
             raise AuthenticationFailed(msg)
 
         return id_token
