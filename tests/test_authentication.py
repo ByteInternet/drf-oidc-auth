@@ -1,7 +1,7 @@
 from django.contrib.auth.models import User
 import json
 
-from jwkest import long_to_base64
+from jwkest import long_to_base64, JWKESTException
 from rest_framework.permissions import IsAuthenticated
 from django.conf.urls import url
 from django.http import HttpResponse
@@ -224,3 +224,14 @@ class TestJWTAuthentication(AuthenticationTestCase):
         auth = 'JWT ' + make_id_token(self.user.username)
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth + 'x')
         self.assertEqual(resp.status_code, 401)
+
+    @patch('oidc_auth.authentication.JWS.verify_compact')
+    @patch('oidc_auth.authentication.logger')
+    def test_decode_jwt_logs_exception_message_when_verify_compact_throws_exception(self, logger_mock, verify_compact_mock):
+        auth = 'JWT ' + make_id_token(self.user.username)
+        verify_compact_mock.side_effect = JWKESTException
+
+        resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
+
+        self.assertEqual(resp.status_code, 401)
+        logger_mock.exception.assert_called_once_with('Invalid Authorization header. JWT Signature verification failed.')
