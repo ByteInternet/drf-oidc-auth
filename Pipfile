@@ -1,0 +1,20 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+autopep8 = "*"
+flake8 = "*"
+tox = "<3.8.0"
+tox-pipenv = "*"
+
+[packages]
+django = "*"
+djangorestframework = "*"
+# authlib = "*"
+authlib = {editable = true, ref = "master", git = "https://github.com/lepture/authlib.git"}
+requests = "*"
+
+[requires]
+python_version = "3.8"
