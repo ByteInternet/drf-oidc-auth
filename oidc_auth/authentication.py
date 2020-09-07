@@ -1,3 +1,4 @@
+import logging
 import time
 
 import requests
@@ -19,6 +20,8 @@ from authlib.oidc.discovery import get_well_known_url
 
 from .settings import api_settings
 from .util import cache
+
+logger = logging.Logger(__name__)
 
 
 def get_user_by_id(request, id_token):
@@ -183,6 +186,7 @@ class JSONWebTokenAuthentication(BaseOidcAuthentication):
         except (BadSignatureError, DecodeError):
             msg = _(
                 'Invalid Authorization header. JWT Signature verification failed.')
+            logger.exception(msg)
             raise AuthenticationFailed(msg)
         except AssertionError:
             msg = _(

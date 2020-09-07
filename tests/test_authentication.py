@@ -10,6 +10,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
 from authlib.jose import JsonWebToken, KeySet, RSAKey
+from authlib.jose.errors import BadSignatureError, DecodeError
 from oidc_auth.authentication import (BearerTokenAuthentication,
                                       JSONWebTokenAuthentication)
 
@@ -243,3 +244,18 @@ class TestJWTAuthentication(AuthenticationTestCase):
         auth = 'JWT ' + make_id_token(self.user.username)
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth + 'x')
         self.assertEqual(resp.status_code, 401)
+
+    @patch('oidc_auth.authentication.jwt.decode')
+    @patch('oidc_auth.authentication.logger')
+    def test_decode_jwt_logs_exception_message_when_decode_throws_exception(
+        self,
+        logger_mock, decode
+    ):
+        auth = 'JWT ' + make_id_token(self.user.username)
+        decode.side_effect = DecodeError, BadSignatureError
+
+        resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
+
+        self.assertEqual(resp.status_code, 401)
+        logger_mock.exception.assert_called_once_with(
+            'Invalid Authorization header. JWT Signature verification failed.')
