@@ -1,20 +1,24 @@
-from calendar import timegm
-import datetime
-from django.contrib.auth import get_user_model
-from django.utils.encoding import smart_text
-from django.utils.functional import cached_property
-from jwkest import JWKESTException
-from jwkest.jwk import KEYS
-from jwkest.jws import JWS
+import time
+
 import requests
+from django.contrib.auth import get_user_model
+from django.utils.encoding import smart_str
+from django.utils.functional import cached_property
+from django.utils.translation import ugettext as _
 from requests import request
 from requests.exceptions import HTTPError
-from rest_framework.authentication import BaseAuthentication, get_authorization_header
+from rest_framework.authentication import (BaseAuthentication,
+                                           get_authorization_header)
 from rest_framework.exceptions import AuthenticationFailed
-import six
-from .util import cache
+
+from authlib.jose import JsonWebKey, jwt
+from authlib.oidc.core.claims import IDToken
+from authlib.jose.errors import (BadSignatureError, DecodeError,
+                                 ExpiredTokenError, JoseError)
+from authlib.oidc.discovery import get_well_known_url
+
 from .settings import api_settings
-from django.utils.translation import ugettext as _
+from .util import cache
 
 
 def get_user_by_id(request, id_token):
@@ -27,11 +31,42 @@ def get_user_by_id(request, id_token):
     return user
 
 
+class DRFIDToken(IDToken):
+
+    def validate_exp(self, now, leeway):
+        super().validate_exp(now, leeway)
+        if now > self['exp']:
+            msg = _('Invalid Authorization header. JWT has expired.')
+            raise AuthenticationFailed(msg)
+
+    def validate_iat(self, now, leeway):
+        super().validate_iat(now, leeway)
+        if self['iat'] < leeway:
+            msg = _('Invalid Authorization header. JWT too old.')
+            raise AuthenticationFailed(msg)
+
+    def validate_aud(self):
+        super().validate_aud()
+        if isinstance(self['aud'], str):
+            self['aud'] = [self['aud']]
+        if len(self['aud']) > 1 and 'azp' not in self:
+            msg = _('Invalid Authorization header. Missing JWT authorized party.')
+            raise AuthenticationFailed(msg)
+        else:
+            super().validate_azp()
+
+
+
 class BaseOidcAuthentication(BaseAuthentication):
     @property
     @cache(ttl=api_settings.OIDC_BEARER_TOKEN_EXPIRATION_TIME)
     def oidc_config(self):
-        return requests.get(api_settings.OIDC_ENDPOINT + '/.well-known/openid-configuration').json()
+        return requests.get(
+            get_well_known_url(
+                api_settings.OIDC_ENDPOINT,
+                external=True
+            )
+        ).json()
 
 
 class BearerTokenAuthentication(BaseOidcAuthentication):
@@ -55,23 +90,28 @@ class BearerTokenAuthentication(BaseOidcAuthentication):
     def get_bearer_token(self, request):
         auth = get_authorization_header(request).split()
         auth_header_prefix = api_settings.BEARER_AUTH_HEADER_PREFIX.lower()
-
-        if not auth or smart_text(auth[0].lower()) != auth_header_prefix:
+        if not auth or smart_str(auth[0].lower()) != auth_header_prefix:
             return None
 
         if len(auth) == 1:
             msg = _('Invalid Authorization header. No credentials provided')
             raise AuthenticationFailed(msg)
         elif len(auth) > 2:
-            msg = _('Invalid Authorization header. Credentials string should not contain spaces.')
+            msg = _(
+                'Invalid Authorization header. Credentials string should not contain spaces.')
             raise AuthenticationFailed(msg)
 
         return auth[1]
 
     @cache(ttl=api_settings.OIDC_BEARER_TOKEN_EXPIRATION_TIME)
     def get_userinfo(self, token):
-        response = requests.get(self.oidc_config['userinfo_endpoint'],
-                                headers={'Authorization': 'Bearer {0}'.format(token.decode('ascii'))})
+        response = requests.get(
+            self.oidc_config['userinfo_endpoint'],
+            headers={'Authorization': 'Bearer {0}'.format(
+                token.decode('ascii')
+            )
+            }
+        )
         response.raise_for_status()
 
         return response.json()
@@ -86,7 +126,6 @@ class JSONWebTokenAuthentication(BaseOidcAuthentication):
         jwt_value = self.get_jwt_value(request)
         if jwt_value is None:
             return None
-
         payload = self.decode_jwt(jwt_value)
         self.validate_claims(payload)
 
@@ -98,70 +137,76 @@ class JSONWebTokenAuthentication(BaseOidcAuthentication):
         auth = get_authorization_header(request).split()
         auth_header_prefix = api_settings.JWT_AUTH_HEADER_PREFIX.lower()
 
-        if not auth or smart_text(auth[0].lower()) != auth_header_prefix:
+        if not auth or smart_str(auth[0].lower()) != auth_header_prefix:
             return None
 
         if len(auth) == 1:
             msg = _('Invalid Authorization header. No credentials provided')
             raise AuthenticationFailed(msg)
         elif len(auth) > 2:
-            msg = _('Invalid Authorization header. Credentials string should not contain spaces.')
+            msg = _(
+                'Invalid Authorization header. Credentials string should not contain spaces.')
             raise AuthenticationFailed(msg)
 
         return auth[1]
 
+    # @cache(ttl=api_settings.OIDC_JWKS_EXPIRATION_TIME)
     def jwks(self):
-        keys = KEYS()
-        keys.load_jwks(self.jwks_data())
-        return keys
-
-    @cache(ttl=api_settings.OIDC_JWKS_EXPIRATION_TIME)
-    def jwks_data(self):
         r = request("GET", self.oidc_config['jwks_uri'], allow_redirects=True)
         r.raise_for_status()
-        return r.text
+        keys = JsonWebKey.import_key_set(r.json())
+        return keys
 
     @cached_property
     def issuer(self):
         return self.oidc_config['issuer']
 
-    def decode_jwt(self, jwt_value):
-        keys = self.jwks()
+    def decode_jwt(self, jwt_value: bytes):
         try:
-            id_token = JWS().verify_compact(jwt_value, keys=keys)
-        except (JWKESTException, ValueError):
-            msg = _('Invalid Authorization header. JWT Signature verification failed.')
+            # assert isinstance(jwt_value, bytes)
+            claims_options = {
+                'iss': {
+                    'essential': True,
+                    'value': self.issuer
+                },
+                'aud': {
+                    'values': self.get_audiences()
+                }
+            }
+
+            id_token = jwt.decode(
+                jwt_value.decode('ascii'),
+                self.jwks(),
+                claims_cls=DRFIDToken,
+                claims_options=claims_options
+            )
+
+        except (BadSignatureError, DecodeError):
+            msg = _(
+                'Invalid Authorization header. JWT Signature verification failed.')
+            raise AuthenticationFailed(msg)
+        except AssertionError:
+            msg = _(
+                'Invalid Authorization header. Please provide base64 encoded ID Token'
+            )
             raise AuthenticationFailed(msg)
 
         return id_token
 
-    def get_audiences(self, id_token):
-        return api_settings.OIDC_AUDIENCES
+    def get_audiences(self):
+        return [audience for audience in api_settings.OIDC_AUDIENCES]
 
     def validate_claims(self, id_token):
-        if isinstance(id_token.get('aud'), six.string_types):
-            # Support for multiple audiences
-            id_token['aud'] = [id_token['aud']]
-
-        if id_token.get('iss') != self.issuer:
-            msg = _('Invalid Authorization header. Invalid JWT issuer.')
-            raise AuthenticationFailed(msg)
-        if not any(aud in self.get_audiences(id_token) for aud in id_token.get('aud', [])):
-            msg = _('Invalid Authorization header. Invalid JWT audience.')
-            raise AuthenticationFailed(msg)
-        if len(id_token['aud']) > 1 and 'azp' not in id_token:
-            msg = _('Invalid Authorization header. Missing JWT authorized party.')
-            raise AuthenticationFailed(msg)
-
-        utc_timestamp = timegm(datetime.datetime.utcnow().utctimetuple())
-        if utc_timestamp > id_token.get('exp', 0):
+        try:
+            id_token.validate(
+                now=int(time.time()),
+                leeway=int(time.time()-api_settings.OIDC_LEEWAY)
+            )
+        except ExpiredTokenError:
             msg = _('Invalid Authorization header. JWT has expired.')
             raise AuthenticationFailed(msg)
-        if 'nbf' in id_token and utc_timestamp < id_token['nbf']:
-            msg = _('Invalid Authorization header. JWT not yet valid.')
-            raise AuthenticationFailed(msg)
-        if utc_timestamp > id_token.get('iat', 0) + api_settings.OIDC_LEEWAY:
-            msg = _('Invalid Authorization header. JWT too old.')
+        except JoseError as e:
+            msg = _(str(type(e)) + str(e))
             raise AuthenticationFailed(msg)
 
     def authenticate_header(self, request):

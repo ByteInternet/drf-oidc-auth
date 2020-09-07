@@ -1,4 +1,4 @@
-SECRET_KEY='secret'
+SECRET_KEY = 'secret'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
