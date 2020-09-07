@@ -12,9 +12,9 @@ from rest_framework.authentication import (BaseAuthentication,
 from rest_framework.exceptions import AuthenticationFailed
 
 from authlib.jose import JsonWebKey, jwt
-from authlib.oidc.core.claims import IDToken
 from authlib.jose.errors import (BadSignatureError, DecodeError,
                                  ExpiredTokenError, JoseError)
+from authlib.oidc.core.claims import IDToken
 from authlib.oidc.discovery import get_well_known_url
 
 from .settings import api_settings
@@ -54,7 +54,6 @@ class DRFIDToken(IDToken):
             raise AuthenticationFailed(msg)
         else:
             super().validate_azp()
-
 
 
 class BaseOidcAuthentication(BaseAuthentication):
