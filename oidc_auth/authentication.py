@@ -170,14 +170,14 @@ class JSONWebTokenAuthentication(BaseOidcAuthentication):
 
         return auth[1]
 
+    def jwks(self):
+        return JsonWebKey.import_key_set(self.jwks_data())
+
     @cache(ttl=api_settings.OIDC_JWKS_EXPIRATION_TIME)
     def jwks_data(self):
         r = request("GET", self.oidc_config['jwks_uri'], allow_redirects=True)
         r.raise_for_status()
         return r.json()
-
-    def jwks(self):
-        return JsonWebKey.import_key_set(self.jwks_data())
 
     @cached_property
     def issuer(self):
