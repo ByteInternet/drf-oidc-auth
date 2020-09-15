@@ -124,6 +124,24 @@ class JSONWebTokenAuthentication(BaseOidcAuthentication):
 
     www_authenticate_realm = 'api'
 
+    @property
+    def audiences(self):
+        return [audience for audience in api_settings.OIDC_AUDIENCES]
+
+    @property
+    def claims_options(self):
+        return {
+            'iss': {
+                'essential': True,
+                'value': self.issuer
+            },
+            'aud': {
+                'values': self.audiences
+            }
+
+
+        }
+
     def authenticate(self, request):
         jwt_value = self.get_jwt_value(request)
         if jwt_value is None:
@@ -152,12 +170,17 @@ class JSONWebTokenAuthentication(BaseOidcAuthentication):
 
         return auth[1]
 
-    # @cache(ttl=api_settings.OIDC_JWKS_EXPIRATION_TIME)
-    def jwks(self):
+    @cache(ttl=api_settings.OIDC_JWKS_EXPIRATION_TIME)
+    def jwks_request(self):
         r = request("GET", self.oidc_config['jwks_uri'], allow_redirects=True)
         r.raise_for_status()
-        keys = JsonWebKey.import_key_set(r.json())
-        return keys
+        return r.json()
+
+    def jwks(self):
+        # Is needed because caching of JsonWebKey is not working as expected.
+        # I don't want to debug it deeper.
+        # This way it works and the request is saved until ttl.
+        return JsonWebKey.import_key_set(self.jwks_request())
 
     @cached_property
     def issuer(self):
@@ -165,24 +188,12 @@ class JSONWebTokenAuthentication(BaseOidcAuthentication):
 
     def decode_jwt(self, jwt_value: bytes):
         try:
-            # assert isinstance(jwt_value, bytes)
-            claims_options = {
-                'iss': {
-                    'essential': True,
-                    'value': self.issuer
-                },
-                'aud': {
-                    'values': self.get_audiences()
-                }
-            }
-
             id_token = jwt.decode(
                 jwt_value.decode('ascii'),
                 self.jwks(),
                 claims_cls=DRFIDToken,
-                claims_options=claims_options
+                claims_options=self.claims_options
             )
-
         except (BadSignatureError, DecodeError):
             msg = _(
                 'Invalid Authorization header. JWT Signature verification failed.')
@@ -195,9 +206,6 @@ class JSONWebTokenAuthentication(BaseOidcAuthentication):
             raise AuthenticationFailed(msg)
 
         return id_token
-
-    def get_audiences(self):
-        return [audience for audience in api_settings.OIDC_AUDIENCES]
 
     def validate_claims(self, id_token):
         try:
