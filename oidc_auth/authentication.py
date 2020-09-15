@@ -183,7 +183,7 @@ class JSONWebTokenAuthentication(BaseOidcAuthentication):
     def issuer(self):
         return self.oidc_config['issuer']
 
-    def decode_jwt(self, jwt_value: bytes):
+    def decode_jwt(self, jwt_value):
         try:
             id_token = jwt.decode(
                 jwt_value.decode('ascii'),
