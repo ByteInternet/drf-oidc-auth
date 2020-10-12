@@ -6,14 +6,12 @@ verify_ssl = true
 [dev-packages]
 autopep8 = "*"
 flake8 = "*"
-tox = "<3.8.0"
-tox-pipenv = "*"
+tox = "*"
 
 [packages]
 django = "*"
 djangorestframework = "*"
-# authlib = "*"
-authlib = {editable = true, ref = "master", git = "https://github.com/lepture/authlib.git"}
+authlib = "*"
 requests = "*"
 
 [requires]
