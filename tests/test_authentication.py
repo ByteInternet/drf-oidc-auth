@@ -16,6 +16,9 @@ from oidc_auth.authentication import (BearerTokenAuthentication,
 
 if sys.version_info > (3,):
     long = int
+else:
+    class ConnectionError(OSError):
+        pass
 try:
     from unittest.mock import patch, Mock
 except ImportError:
@@ -176,8 +179,8 @@ class TestJWTAuthentication(AuthenticationTestCase):
     def test_using_valid_jwt(self):
         auth = 'JWT ' + make_id_token(self.user.username)
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
-        self.assertEqual(resp.content.decode(), 'a')
         self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.content.decode(), 'a')
 
     def test_without_jwt(self):
         resp = self.client.get('/test/')
@@ -227,7 +230,7 @@ class TestJWTAuthentication(AuthenticationTestCase):
     def test_with_multiple_audiences(self):
         auth = 'JWT ' + make_id_token(self.user.username, aud=['you', 'me'])
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
-        self.assertEqual(resp.status_code, 401)
+        self.assertEqual(resp.status_code, 200)
 
     def test_with_invalid_multiple_audiences(self):
         auth = 'JWT ' + make_id_token(self.user.username, aud=['we', 'me'])

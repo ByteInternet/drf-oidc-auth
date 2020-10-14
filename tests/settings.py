@@ -12,5 +12,9 @@ INSTALLED_APPS = (
 ROOT_URLCONF = 'tests.test_authentication'
 OIDC_AUTH = {
     'OIDC_ENDPOINT': 'http://example.com',
-    'OIDC_AUDIENCES': ('you',),
+    'OIDC_CLAIMS_OPTIONS': {
+        'aud': {
+            'values': ['you'],
+        }
+    },
 }

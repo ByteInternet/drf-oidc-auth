@@ -2,6 +2,11 @@ import logging
 import time
 
 import requests
+from authlib.jose import JsonWebKey, jwt
+from authlib.jose.errors import (BadSignatureError, DecodeError,
+                                 ExpiredTokenError, JoseError)
+from authlib.oidc.core.claims import IDToken
+from authlib.oidc.discovery import get_well_known_url
 from django.contrib.auth import get_user_model
 from django.utils.encoding import smart_str
 from django.utils.functional import cached_property
@@ -12,16 +17,11 @@ from rest_framework.authentication import (BaseAuthentication,
                                            get_authorization_header)
 from rest_framework.exceptions import AuthenticationFailed
 
-from authlib.jose import JsonWebKey, jwt
-from authlib.jose.errors import (BadSignatureError, DecodeError,
-                                 ExpiredTokenError, JoseError)
-from authlib.oidc.core.claims import IDToken
-from authlib.oidc.discovery import get_well_known_url
-
 from .settings import api_settings
 from .util import cache
 
-logger = logging.Logger(__name__)
+logging.basicConfig()
+logger = logging.getLogger(__name__)
 
 
 def get_user_by_id(request, id_token):
@@ -37,26 +37,16 @@ def get_user_by_id(request, id_token):
 class DRFIDToken(IDToken):
 
     def validate_exp(self, now, leeway):
-        super().validate_exp(now, leeway)
+        super(DRFIDToken, self).validate_exp(now, leeway)
         if now > self['exp']:
             msg = _('Invalid Authorization header. JWT has expired.')
             raise AuthenticationFailed(msg)
 
     def validate_iat(self, now, leeway):
-        super().validate_iat(now, leeway)
+        super(DRFIDToken, self).validate_iat(now, leeway)
         if self['iat'] < leeway:
             msg = _('Invalid Authorization header. JWT too old.')
             raise AuthenticationFailed(msg)
-
-    def validate_aud(self):
-        super().validate_aud()
-        if isinstance(self['aud'], str):
-            self['aud'] = [self['aud']]
-        if len(self['aud']) > 1 and 'azp' not in self:
-            msg = _('Invalid Authorization header. Missing JWT authorized party.')
-            raise AuthenticationFailed(msg)
-        else:
-            super().validate_azp()
 
 
 class BaseOidcAuthentication(BaseAuthentication):
@@ -125,22 +115,16 @@ class JSONWebTokenAuthentication(BaseOidcAuthentication):
     www_authenticate_realm = 'api'
 
     @property
-    def audiences(self):
-        return [audience for audience in api_settings.OIDC_AUDIENCES]
-
-    @property
     def claims_options(self):
-        return {
+        _claims_options = {
             'iss': {
                 'essential': True,
-                'value': self.issuer
-            },
-            'aud': {
-                'values': self.audiences
+                'values': [self.issuer]
             }
-
-
         }
+        for key, value in api_settings.OIDC_CLAIMS_OPTIONS.items():
+            _claims_options[key] = value
+        return _claims_options
 
     def authenticate(self, request):
         jwt_value = self.get_jwt_value(request)
