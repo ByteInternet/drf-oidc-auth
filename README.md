@@ -39,8 +39,14 @@ OIDC_AUTH = {
     # at <endpoint>/.well-known/openid-configuration
     'OIDC_ENDPOINT': 'https://accounts.google.com',
 
-    # Accepted audiences the ID Tokens can be issued to
-    'OIDC_AUDIENCES': ('myapp',),
+    # The Claims Options can now be defined by a static string.
+    # ref: https://docs.authlib.org/en/latest/jose/jwt.html#jwt-payload-claims-validation
+    # The old OIDC_AUDIENCES option is removed in favor of the new option.
+    'OIDC_CLAIMS_OPTIONS': {
+        'aud': {
+            'values': ['myapp'],
+        }
+    },
     
     # (Optional) Function that resolves id_token into user.
     # This function receives a request and an id_token dict and expects to
