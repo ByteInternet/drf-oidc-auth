@@ -15,6 +15,7 @@ OIDC_AUTH = {
     'OIDC_CLAIMS_OPTIONS': {
         'aud': {
             'values': ['you'],
+            'essential': True,
         }
     },
 }
