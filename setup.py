@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='drf-oidc-auth',
-    version='0.11.0',
+    version='1.0.0',
     packages=['oidc_auth'],
     url='https://github.com/ByteInternet/drf-oidc-auth',
     license='MIT',
@@ -11,6 +11,7 @@ setup(
     description='OpenID Connect authentication for Django Rest Framework',
     install_requires=[
         'authlib>=0.15.0',
+        'cryptography>=2.6',
         'django>=1.8.0',
         'djangorestframework>=3.0.0',
         'requests>=2.20.0'
