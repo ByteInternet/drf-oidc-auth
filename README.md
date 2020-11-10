@@ -42,9 +42,11 @@ OIDC_AUTH = {
     # The Claims Options can now be defined by a static string.
     # ref: https://docs.authlib.org/en/latest/jose/jwt.html#jwt-payload-claims-validation
     # The old OIDC_AUDIENCES option is removed in favor of this new option.
+    # `aud` is only required, when you set it as required.
     'OIDC_CLAIMS_OPTIONS': {
         'aud': {
             'values': ['myapp'],
+            'required': True,
         }
     },
     
