@@ -41,7 +41,7 @@ OIDC_AUTH = {
 
     # The Claims Options can now be defined by a static string.
     # ref: https://docs.authlib.org/en/latest/jose/jwt.html#jwt-payload-claims-validation
-    # The old OIDC_AUDIENCES option is removed in favor of the new option.
+    # The old OIDC_AUDIENCES option is removed in favor of this new option.
     'OIDC_CLAIMS_OPTIONS': {
         'aud': {
             'values': ['myapp'],
