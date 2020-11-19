@@ -11,7 +11,11 @@ DEFAULTS = {
 
     # The Claims Options can now be defined by a static string.
     # ref: https://docs.authlib.org/en/latest/jose/jwt.html#jwt-payload-claims-validation
-    'OIDC_CLAIMS_OPTIONS': {},
+    'OIDC_CLAIMS_OPTIONS': {
+        'aud': {
+            'essential': True,
+        }
+    },
 
     # Number of seconds in the past valid tokens can be issued
     'OIDC_LEEWAY': 600,
