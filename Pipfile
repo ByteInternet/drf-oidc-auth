@@ -1,0 +1,18 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+autopep8 = "*"
+flake8 = "*"
+tox = "*"
+
+[packages]
+django = "*"
+djangorestframework = "*"
+authlib = "*"
+requests = "*"
+
+[requires]
+python_version = "3.8"

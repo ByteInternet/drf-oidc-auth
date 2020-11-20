@@ -1,19 +1,24 @@
-from django.contrib.auth.models import User
 import json
+import sys
 
-from jwkest import long_to_base64, JWKESTException
-from rest_framework.permissions import IsAuthenticated
 from django.conf.urls import url
+from django.contrib.auth.models import User
 from django.http import HttpResponse
 from django.test import TestCase
-from jwkest.jwk import RSAKey, KEYS
-from jwkest.jws import JWS
+from requests import Response
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
-from requests import Response, HTTPError, ConnectionError
-from oidc_auth.authentication import JSONWebTokenAuthentication, BearerTokenAuthentication
-import sys
+
+from authlib.jose import JsonWebToken, KeySet, RSAKey
+from authlib.jose.errors import BadSignatureError, DecodeError
+from oidc_auth.authentication import (BearerTokenAuthentication,
+                                      JSONWebTokenAuthentication)
+
 if sys.version_info > (3,):
     long = int
+else:
+    class ConnectionError(OSError):
+        pass
 try:
     from unittest.mock import patch, Mock
 except ImportError:
@@ -22,7 +27,10 @@ except ImportError:
 
 class MockView(APIView):
     permission_classes = (IsAuthenticated,)
-    authentication_classes = (JSONWebTokenAuthentication, BearerTokenAuthentication)
+    authentication_classes = (
+        JSONWebTokenAuthentication,
+        BearerTokenAuthentication
+    )
 
     def get(self, request):
         return HttpResponse('a')
@@ -32,16 +40,14 @@ urlpatterns = [
     url(r'^test/$', MockView.as_view(), name="testview")
 ]
 
-key = RSAKey(kid="test",
-             kty="RSA",
-             e=long_to_base64(long(65537)),
-             n=long_to_base64(long(103144733181541730170695212353035735911272360475451101847332641719504193145911782103718552703497383385072400068398348471608551845979550140132066577502098324638900101678499876506366406838561711807168917151266210861310839976066381600661109647310812646802675105044570916072792610952531033569123889433857109695663)),
-             d=long_to_base64(long(87474011172773995802176478974956531454728135178991596207863469898989014679490621318105454312226445649668492543167679449044101982079487873850500638991205330610459744732712633893362912169260215247013564296846583369572335796121742404877695795618480142002129365141632060905382558309932032446524457731175746076993)))
+key = RSAKey.generate_key(is_private=True)
 
 
 def make_jwt(payload):
-    jws = JWS(payload, alg='RS256')
-    return jws.sign_compact([key])
+    jwt = JsonWebToken(['RS256'])
+    jws = jwt.encode(
+        {'alg': 'RS256', 'kid': key.as_dict(add_kid=True).get('kid')}, payload, key=key)
+    return jws
 
 
 def make_id_token(sub,
@@ -50,14 +56,16 @@ def make_id_token(sub,
                   exp=999999999999,  # tests will start failing in September 33658
                   iat=999999999999,
                   **kwargs):
-    return make_jwt(dict(
-        iss=iss,
-        aud=aud,
-        exp=exp,
-        iat=iat,
-        sub=str(sub),
-        **kwargs
-    ))
+    return make_jwt(
+        dict(
+            iss=iss,
+            aud=aud,
+            exp=exp,
+            iat=iat,
+            sub=str(sub),
+            **kwargs
+        )
+    ).decode('ascii')
 
 
 class FakeRequests(object):
@@ -99,23 +107,30 @@ class AuthenticationTestCase(TestCase):
                                      "userinfo_endpoint": "http://example.com/userinfo"})
         self.mock_get = self.patch('requests.get')
         self.mock_get.side_effect = self.responder.get
-        keys = KEYS()
-        keys.add({'key': key, 'kty': 'RSA', 'kid': key.kid})
-        self.patch('oidc_auth.authentication.request', return_value=Mock(status_code=200,
-                                                                         text=keys.dump_jwks()))
+        keys = KeySet(keys=[key])
+        self.patch(
+            'oidc_auth.authentication.request',
+            return_value=Mock(
+                status_code=200,
+                json=keys.as_json
+            )
+        )
 
 
 class TestBearerAuthentication(AuthenticationTestCase):
     def test_using_valid_bearer_token(self):
-        self.responder.set_response('http://example.com/userinfo', {'sub': self.user.username})
+        self.responder.set_response(
+            'http://example.com/userinfo', {'sub': self.user.username})
         auth = 'Bearer abcdefg'
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.content.decode(), 'a')
         self.assertEqual(resp.status_code, 200)
-        self.mock_get.assert_called_with('http://example.com/userinfo', headers={'Authorization': auth})
+        self.mock_get.assert_called_with(
+            'http://example.com/userinfo', headers={'Authorization': auth})
 
     def test_cache_of_valid_bearer_token(self):
-        self.responder.set_response('http://example.com/userinfo', {'sub': self.user.username})
+        self.responder.set_response(
+            'http://example.com/userinfo', {'sub': self.user.username})
         auth = 'Bearer egergerg'
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 200)
@@ -138,7 +153,8 @@ class TestBearerAuthentication(AuthenticationTestCase):
         self.assertEqual(resp.status_code, 401)
 
         # Token becomes valid
-        self.responder.set_response('http://example.com/userinfo', {'sub': self.user.username})
+        self.responder.set_response(
+            'http://example.com/userinfo', {'sub': self.user.username})
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 200)
 
@@ -163,15 +179,15 @@ class TestJWTAuthentication(AuthenticationTestCase):
     def test_using_valid_jwt(self):
         auth = 'JWT ' + make_id_token(self.user.username)
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
-        self.assertEqual(resp.content.decode(), 'a')
         self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.content.decode(), 'a')
 
     def test_without_jwt(self):
         resp = self.client.get('/test/')
         self.assertEqual(resp.status_code, 401)
 
     def test_with_invalid_jwt(self):
-        auth = 'JWT bla'
+        auth = 'JWT e30='
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 401)
 
@@ -191,7 +207,8 @@ class TestJWTAuthentication(AuthenticationTestCase):
         self.assertEqual(resp.status_code, 401)
 
     def test_with_invalid_issuer(self):
-        auth = 'JWT ' + make_id_token(self.user.username, iss='http://something.com')
+        auth = 'JWT ' + \
+            make_id_token(self.user.username, iss='http://something.com')
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 401)
 
@@ -213,10 +230,16 @@ class TestJWTAuthentication(AuthenticationTestCase):
     def test_with_multiple_audiences(self):
         auth = 'JWT ' + make_id_token(self.user.username, aud=['you', 'me'])
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
+        self.assertEqual(resp.status_code, 200)
+
+    def test_with_invalid_multiple_audiences(self):
+        auth = 'JWT ' + make_id_token(self.user.username, aud=['we', 'me'])
+        resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 401)
 
     def test_with_multiple_audiences_and_authorized_party(self):
-        auth = 'JWT ' + make_id_token(self.user.username, aud=['you', 'me'], azp='you')
+        auth = 'JWT ' + \
+            make_id_token(self.user.username, aud=['you', 'me'], azp='you')
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 200)
 
@@ -225,13 +248,17 @@ class TestJWTAuthentication(AuthenticationTestCase):
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth + 'x')
         self.assertEqual(resp.status_code, 401)
 
-    @patch('oidc_auth.authentication.JWS.verify_compact')
+    @patch('oidc_auth.authentication.jwt.decode')
     @patch('oidc_auth.authentication.logger')
-    def test_decode_jwt_logs_exception_message_when_verify_compact_throws_exception(self, logger_mock, verify_compact_mock):
+    def test_decode_jwt_logs_exception_message_when_decode_throws_exception(
+        self,
+        logger_mock, decode
+    ):
         auth = 'JWT ' + make_id_token(self.user.username)
-        verify_compact_mock.side_effect = JWKESTException
+        decode.side_effect = DecodeError, BadSignatureError
 
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
 
         self.assertEqual(resp.status_code, 401)
-        logger_mock.exception.assert_called_once_with('Invalid Authorization header. JWT Signature verification failed.')
+        logger_mock.exception.assert_called_once_with(
+            'Invalid Authorization header. JWT Signature verification failed.')

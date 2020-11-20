@@ -1,13 +1,21 @@
 from django.conf import settings
 from rest_framework.settings import APISettings
 
-
 USER_SETTINGS = getattr(settings, 'OIDC_AUTH', None)
 
 DEFAULTS = {
     'OIDC_ENDPOINT': None,
-    'OIDC_ENDPOINTS': {},
-    'OIDC_AUDIENCES': None,
+
+    # Currently unimplemented
+    'OIDC_ENDPOINTS': [],
+
+    # The Claims Options can now be defined by a static string.
+    # ref: https://docs.authlib.org/en/latest/jose/jwt.html#jwt-payload-claims-validation
+    'OIDC_CLAIMS_OPTIONS': {
+        'aud': {
+            'essential': True,
+        }
+    },
 
     # Number of seconds in the past valid tokens can be issued
     'OIDC_LEEWAY': 600,
@@ -27,6 +35,8 @@ DEFAULTS = {
     # The Django cache to use
     'OIDC_CACHE_NAME': 'default',
     'OIDC_CACHE_PREFIX': 'oidc_auth.'
+
+
 }
 
 # List of settings that may be in string import notation.

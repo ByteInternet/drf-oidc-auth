@@ -79,4 +79,9 @@ class TestCacheDecorator(TestCase):
         caches['default'].get.return_value = None
         self.mymethod()
         caches['default'].get.assert_called_once_with('some-other-prefix.mymethod', version=1)
-        caches['default'].set.assert_called_once_with('some-other-prefix.mymethod', ANY, timeout=1, version=1)
+        caches['default'].set.assert_called_once_with(
+            'some-other-prefix.mymethod',
+            ANY,
+            timeout=1,
+            version=1
+        )
