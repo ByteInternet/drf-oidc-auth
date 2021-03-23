@@ -7,6 +7,6 @@ python:
   - 3.6
   - 3.7
 install:
-  - pip install tox tox-travis
+  - pip install -U tox tox-travis pip virtualenv
 script:
   - tox
