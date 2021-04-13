@@ -57,6 +57,8 @@ class FakeRequests(object):
 
 
 class AuthenticationTestCaseMixin(object):
+    username = 'henk'
+
     def patch(self, thing_to_mock, **kwargs):
         patcher = patch(thing_to_mock, **kwargs)
         patched = patcher.start()
@@ -64,7 +66,7 @@ class AuthenticationTestCaseMixin(object):
         return patched
 
     def setUp(self):
-        self.user, _ = get_user_model().objects.get_or_create(username='henk')
+        self.user, _ = get_user_model().objects.get_or_create(username=self.username)
         self.responder = FakeRequests()
         self.responder.set_response("http://example.com/.well-known/openid-configuration",
                                     {"jwks_uri": "http://example.com/jwks",
