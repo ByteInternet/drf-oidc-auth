@@ -88,6 +88,34 @@ pip install tox
 tox
 ```
 
+## Mocking authentication
+
+There's a `AuthenticationTestCaseMixin` provided in the `oidc_auth.test` module, which you 
+can use for testing authentication like so:
+```python
+from oidc_auth.test import AuthenticationTestCaseMixin
+from django.test import TestCase
+
+class MyTestCase(AuthenticationTestCaseMixin, TestCase):
+    def test_example_cache_of_valid_bearer_token(self):
+        self.responder.set_response(
+            'http://example.com/userinfo', {'sub': self.user.username})
+        auth = 'Bearer egergerg'
+        resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
+        self.assertEqual(resp.status_code, 200)
+
+        # Token expires, but validity is cached
+        self.responder.set_response('http://example.com/userinfo', "", 401)
+        resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
+        self.assertEqual(resp.status_code, 200)
+
+    def test_example_using_invalid_bearer_token(self):
+        self.responder.set_response('http://example.com/userinfo', "", 401)
+        auth = 'Bearer hjikasdf'
+        resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
+        self.assertEqual(resp.status_code, 401)
+```
+
 # References
 
 * Requires [Django REST Framework](http://www.django-rest-framework.org/)
