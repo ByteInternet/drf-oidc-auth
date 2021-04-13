@@ -97,13 +97,13 @@ class BearerTokenAuthentication(BaseOidcAuthentication):
 
     @cache(ttl=api_settings.OIDC_BEARER_TOKEN_EXPIRATION_TIME)
     def get_userinfo(self, token):
-        response = requests.get(
-            self.oidc_config['userinfo_endpoint'],
-            headers={'Authorization': 'Bearer {0}'.format(
-                token.decode('ascii')
-            )
-            }
-        )
+        userinfo_endpoint = self.oidc_config.get('userinfo_endpoint', api_settings.USERINFO_ENDPOINT)
+        if not userinfo_endpoint:
+            raise AuthenticationFailed(_('Invalid userinfo_endpoint URL. Did not find a URL from OpenID connect '
+                                         'discovery metadata nor settings.OIDC_AUTH.USERINFO_ENDPOINT.'))
+
+        response = requests.get(userinfo_endpoint, headers={
+            'Authorization': 'Bearer {0}'.format(token.decode('ascii'))})
         response.raise_for_status()
 
         return response.json()
