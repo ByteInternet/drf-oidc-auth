@@ -1,16 +1,15 @@
 import sys
 
 from authlib.jose.errors import BadSignatureError, DecodeError
-from django.conf.urls import url
 from django.http import HttpResponse
 from django.test import TestCase
+from django.urls import re_path as url
+from oidc_auth.authentication import (BearerTokenAuthentication,
+                                      JSONWebTokenAuthentication)
+from oidc_auth.test import AuthenticationTestCaseMixin, make_id_token
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
-
-from oidc_auth.authentication import (BearerTokenAuthentication,
-                                      JSONWebTokenAuthentication)
-from oidc_auth.test import make_id_token, AuthenticationTestCaseMixin
 
 if sys.version_info > (3,):
     long = int
@@ -19,9 +18,9 @@ else:
         pass
 
 try:
-    from unittest.mock import patch, Mock, PropertyMock
+    from unittest.mock import Mock, PropertyMock, patch
 except ImportError:
-    from mock import patch, Mock, PropertyMock
+    from mock import Mock, PropertyMock, patch
 
 
 class MockView(APIView):
