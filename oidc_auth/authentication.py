@@ -10,7 +10,7 @@ from authlib.oidc.discovery import get_well_known_url
 from django.contrib.auth import get_user_model
 from django.utils.encoding import smart_str
 from django.utils.functional import cached_property
-from django.utils.translation import ugettext as _
+from django.utils.translation import gettext as _
 from requests import request
 from requests.exceptions import HTTPError
 from rest_framework.authentication import (BaseAuthentication,
