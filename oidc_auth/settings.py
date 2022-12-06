@@ -17,9 +17,6 @@ DEFAULTS = {
         }
     },
 
-    # Number of seconds in the past valid tokens can be issued
-    'OIDC_LEEWAY': 600,
-
     # Time before JWKS will be refreshed
     'OIDC_JWKS_EXPIRATION_TIME': 24 * 60 * 60,
 
