@@ -55,7 +55,7 @@ OIDC_AUTH = {
     # return a User object. The default implementation tries to find the user
     # based on username (natural key) taken from the 'sub'-claim of the
     # id_token.
-    'OIDC_RESOLVE_USER_FUNCTION': 'oidc_auth.authentication.get_user_by_id',
+    'OIDC_RESOLVE_USER_FUNCTION': 'oidc_auth.authentication.get_user_none',
 
     # (Optional) Time before signing keys will be refreshed (default 24 hrs)
     'OIDC_JWKS_EXPIRATION_TIME': 24*60*60,
@@ -76,6 +76,25 @@ OIDC_AUTH = {
     'OIDC_CACHE_PREFIX': 'oidc_auth.',
 }
 ```
+
+## User authentication
+
+By default, this plugin does not authenticate a user. As long as the token itself is validated succesfully, it will be a success. This will cause problems if your permission classes require a user to be authenticated, or your API in general requires a User to be authenticated. In order to authenticate a user, a custom function can be defined in the
+`OIDC_RESOLVE_USER_FUNCTION` setting. An example can look like this:
+
+```
+def get_user_by_id(request, id_token)
+    User = get_user_model()
+    try:
+        user = User.objects.get(username=id_token.get('sub'))
+    except User.DoesNotExist:
+        msg = _('Invalid Authorization header. User not found.')
+        raise AuthenticationFailed(msg)
+    return user
+
+```
+
+This will authenticate as the user with a username matching the `sub` claim in the token. If no such user exists, the authentication fails.
 
 # Running tests
 
