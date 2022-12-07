@@ -5,10 +5,12 @@ from django.http import HttpResponse
 from django.test import TestCase
 from django.urls import re_path as url
 from oidc_auth.authentication import (BearerTokenAuthentication,
-                                      JSONWebTokenAuthentication)
+                                      JSONWebTokenAuthentication,
+                                      JWTToken,
+                                      UserInfo,)
 from oidc_auth.test import AuthenticationTestCaseMixin, make_id_token
 from rest_framework.exceptions import AuthenticationFailed
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import BasePermission
 from rest_framework.views import APIView
 
 if sys.version_info > (3,):
@@ -23,8 +25,19 @@ except ImportError:
     from mock import Mock, PropertyMock, patch
 
 
+class TokenPermission(BasePermission):
+    """Checks if the token has correct permissions"""
+
+    def has_permission(self, request, _view):
+        token = request.auth  # type: JWTToken
+        if not token:
+            return False
+        if not isinstance(token, JWTToken) and not isinstance(token, UserInfo):
+            return False
+        return True
+
 class MockView(APIView):
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (TokenPermission,)
     authentication_classes = (
         JSONWebTokenAuthentication,
         BearerTokenAuthentication
@@ -178,11 +191,6 @@ class TestJWTAuthentication(AuthenticationTestCaseMixin, TestCase):
 
     def test_with_too_new_jwt(self):
         auth = 'JWT ' + make_id_token(self.user.username, nbf=999999999999)
-        resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
-        self.assertEqual(resp.status_code, 401)
-
-    def test_with_unknown_subject(self):
-        auth = 'JWT ' + make_id_token(self.user.username + 'x')
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 401)
 
