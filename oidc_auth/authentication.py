@@ -45,6 +45,9 @@ class BaseOidcAuthentication(BaseAuthentication):
             )
         ).json()
 
+class UserInfo(dict):
+    """Wrapper class to allow checks to see if the object is a JWT token"""
+    pass
 
 class BearerTokenAuthentication(BaseOidcAuthentication):
     www_authenticate_realm = 'api'
@@ -62,7 +65,7 @@ class BearerTokenAuthentication(BaseOidcAuthentication):
 
         user = api_settings.OIDC_RESOLVE_USER_FUNCTION(request, userinfo)
 
-        return user, userinfo
+        return user, UserInfo(userinfo)
 
     def get_bearer_token(self, request):
         auth = get_authorization_header(request).split()
@@ -94,6 +97,10 @@ class BearerTokenAuthentication(BaseOidcAuthentication):
         return response.json()
 
 
+class JWTToken(dict):
+    """Wrapper class to allow checks to see if the object is a JWT token"""
+    pass
+
 class JSONWebTokenAuthentication(BaseOidcAuthentication):
     """Token based authentication using the JSON Web Token standard"""
 
@@ -120,7 +127,7 @@ class JSONWebTokenAuthentication(BaseOidcAuthentication):
 
         user = api_settings.OIDC_RESOLVE_USER_FUNCTION(request, payload)
 
-        return user, payload
+        return user, JWTToken(payload)
 
     def get_jwt_value(self, request):
         auth = get_authorization_header(request).split()
