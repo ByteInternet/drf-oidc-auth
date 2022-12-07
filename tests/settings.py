@@ -5,8 +5,6 @@ DATABASES = {
         'NAME': ':memory:'
     }
 }
-INSTALLED_APPS = (
-)
 REST_FRAMEWORK = {
     'UNAUTHENTICATED_USER': None,
 }

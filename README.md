@@ -107,10 +107,9 @@ and`django.contrib.contenttypes` apps to be configured in the django `settings.p
 
 ```
 INSTALLED_APPS = (
-    ...
+    #  ...
     'django.contrib.auth',
     'django.contrib.contenttypes',
-    ...
 )
 ```
 
