@@ -25,8 +25,12 @@ REST_FRAMEWORK = {
         'oidc_auth.authentication.JSONWebTokenAuthentication',
         'oidc_auth.authentication.BearerTokenAuthentication',
     ),
+    'UNAUTHENTICATED_USER': None,
 }
 ```
+
+These can also be set manually for the API view, it does not have to be
+registered as the default authentication classes.
 
 And configure the module itself in settings.py:
 ```py
