@@ -20,9 +20,6 @@ Configure authentication for Django REST Framework in settings.py:
 
 ```py
 REST_FRAMEWORK = {
-    'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticated',
-    ),
     'DEFAULT_AUTHENTICATION_CLASSES': (
         # ...
         'oidc_auth.authentication.JSONWebTokenAuthentication',
