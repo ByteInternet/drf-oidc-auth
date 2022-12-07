@@ -80,10 +80,16 @@ OIDC_AUTH = {
 
 ## User authentication
 
-By default, this plugin does not authenticate a user. As long as the token itself is validated succesfully, it will be a success. This will cause problems if your permission classes require a user to be authenticated, or your API in general requires a User to be authenticated. In order to authenticate a user, a custom function can be defined in the
+By default, this plugin does not authenticate a user. As long as the token itself is validated succesfully,
+it will be a success. This will cause problems if your permission classes require a user to be authenticated,
+or your API in general requires a User to be authenticated. In order to authenticate a user, a custom
+function can be defined in the
 `OIDC_RESOLVE_USER_FUNCTION` setting. An example can look like this:
 
 ```
+from django.contrib.auth import get_user_model
+from rest_framework.exceptions import AuthenticationFailed
+
 def get_user_by_id(request, id_token)
     User = get_user_model()
     try:
@@ -95,7 +101,19 @@ def get_user_by_id(request, id_token)
 
 ```
 
-This will authenticate as the user with a username matching the `sub` claim in the token. If no such user exists, the authentication fails.
+This will authenticate as the user with a username matching the `sub` claim in the token. If no such user
+exists, the authentication fails. Using the Django user models will require the `django.contrib.auth`
+and`django.contrib.contenttypes` apps to be configured in the django `settings.py` file like so:
+
+```
+INSTALLED_APPS = (
+    ...
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    ...
+)
+```
+
 
 # Running tests
 
@@ -115,7 +133,7 @@ from django.test import TestCase
 class MyTestCase(AuthenticationTestCaseMixin, TestCase):
     def test_example_cache_of_valid_bearer_token(self):
         self.responder.set_response(
-            'http://example.com/userinfo', {'sub': self.user.username})
+            'http://example.com/userinfo', {'sub': self.username})
         auth = 'Bearer egergerg'
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 200)
