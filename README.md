@@ -6,10 +6,9 @@ by ByteInternet ](https://github.com/Uninett/drf-oidc-auth).
 This package contains an authentication mechanism for authenticating
 users of a REST API using tokens obtained from OpenID Connect.
 
-Currently, it only supports JWT and Bearer tokens. JWT tokens will be
+Currently, it only supports JWT tokens. JWT tokens will be
 validated against the public keys of an OpenID connect authorization
-service. Bearer tokens are used to retrieve the OpenID UserInfo for a
-user to identify him.
+service.
 
 # Installation
 
@@ -26,7 +25,6 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         # ...
         'oidc_auth.authentication.JSONWebTokenAuthentication',
-        'oidc_auth.authentication.BearerTokenAuthentication',
     ),
     'UNAUTHENTICATED_USER': None,
 }
@@ -38,21 +36,14 @@ registered as the default authentication classes.
 And configure the module itself in settings.py:
 ```py
 OIDC_AUTH = {
-    # Specify OpenID Connect endpoint. Configuration will be
-    # automatically done based on the discovery document found
-    # at <endpoint>/.well-known/openid-configuration
-    'OIDC_ENDPOINT': 'https://accounts.google.com',
+    # Specify JWK endpoint
+    'JWKS_ENDPOINT': 'http://example.com/openid/jwks',
 
-    # The Claims Options can now be defined by a static string.
-    # ref: https://docs.authlib.org/en/latest/jose/jwt.html#jwt-payload-claims-validation
-    # The old OIDC_AUDIENCES option is removed in favor of this new option.
-    # `aud` is only required, when you set it as an essential claim.
-    'OIDC_CLAIMS_OPTIONS': {
-        'aud': {
-            'values': ['myapp'],
-            'essential': True,
-        }
-    },
+    # Will only accept tokens with 'aud' claim that matches this
+    'AUDIENCE': 'myapp',
+
+    # Will only accept tokens with 'iss' claim that matches this
+    'ISSUER': 'http://example.com',
 
     # (Optional) Function that resolves id_token into user.
     # This function receives a request and an id_token dict and expects to
@@ -132,22 +123,21 @@ can use for testing authentication like so:
 from oidc_auth.test import AuthenticationTestCaseMixin
 from django.test import TestCase
 
-class MyTestCase(AuthenticationTestCaseMixin, TestCase):
-    def test_example_cache_of_valid_bearer_token(self):
-        self.responder.set_response(
-            'http://example.com/userinfo', {'sub': self.username})
-        auth = 'Bearer egergerg'
+class TestJWTAuthentication(AuthenticationTestCaseMixin, TestCase):
+    urls = __name__
+
+    def test_using_valid_jwt(self):
+        auth = 'JWT ' + make_id_token(self.username)
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.content.decode(), 'a')
 
-        # Token expires, but validity is cached
-        self.responder.set_response('http://example.com/userinfo', "", 401)
-        resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
-        self.assertEqual(resp.status_code, 200)
+    def test_without_jwt(self):
+        resp = self.client.get('/test/')
+        self.assertEqual(resp.status_code, 401)
 
-    def test_example_using_invalid_bearer_token(self):
-        self.responder.set_response('http://example.com/userinfo', "", 401)
-        auth = 'Bearer hjikasdf'
+    def test_with_invalid_jwt(self):
+        auth = 'JWT e30='
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 401)
 ```
@@ -157,3 +147,4 @@ class MyTestCase(AuthenticationTestCaseMixin, TestCase):
 * Requires [Django REST Framework](http://www.django-rest-framework.org/)
 * And of course [Django](https://www.djangoproject.com/)
 * Inspired on [REST framework JWT Auth](https://github.com/GetBlimp/django-rest-framework-jwt)
+* Fork of [OpenID Connect authentication for Django Rest Framework](https://github.com/Uninett/drf-oidc-auth)
