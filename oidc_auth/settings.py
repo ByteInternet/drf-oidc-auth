@@ -4,7 +4,7 @@ from rest_framework.settings import APISettings
 USER_SETTINGS = getattr(settings, 'OIDC_AUTH', None)
 
 DEFAULTS = {
-    'OIDC_ENDPOINT': None,
+    # Specify JWK endpoint
     'JWKS_ENDPOINT': None,
 
     # Will only accept tokens with 'iss' claim that matches this
@@ -23,14 +23,10 @@ DEFAULTS = {
     'OIDC_BEARER_TOKEN_EXPIRATION_TIME': 600,
 
     'JWT_AUTH_HEADER_PREFIX': 'JWT',
-    'BEARER_AUTH_HEADER_PREFIX': 'Bearer',
 
     # The Django cache to use
     'OIDC_CACHE_NAME': 'default',
     'OIDC_CACHE_PREFIX': 'oidc_auth.',
-
-    # URL of the OpenID Provider's UserInfo Endpoint
-    'USERINFO_ENDPOINT': None,
 }
 
 # List of settings that may be in string import notation.

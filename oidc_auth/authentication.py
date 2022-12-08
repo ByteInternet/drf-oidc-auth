@@ -1,16 +1,13 @@
 import logging
 import time
 
-import requests
 from authlib.jose import JsonWebKey, jwt
 from authlib.jose.errors import (BadSignatureError, DecodeError,
                                  ExpiredTokenError, JoseError)
 from authlib.oidc.core.claims import IDToken
-from authlib.oidc.discovery import get_well_known_url
 from django.utils.encoding import smart_str
 from django.utils.translation import gettext as _
 from requests import request
-from requests.exceptions import HTTPError
 from rest_framework.authentication import (BaseAuthentication,
                                            get_authorization_header)
 from rest_framework.exceptions import AuthenticationFailed
@@ -26,74 +23,16 @@ def get_user_none(request, id_token):
     return None
 
 
-class BaseOidcAuthentication(BaseAuthentication):
-    @property
-    @cache(ttl=api_settings.OIDC_BEARER_TOKEN_EXPIRATION_TIME)
-    def oidc_config(self):
-        return requests.get(
-            get_well_known_url(
-                api_settings.OIDC_ENDPOINT,
-                external=True
-            )
-        ).json()
-
 class UserInfo(dict):
     """Wrapper class to allow checks to see if the object is a JWT token"""
     pass
-
-class BearerTokenAuthentication(BaseOidcAuthentication):
-    www_authenticate_realm = 'api'
-
-    def authenticate(self, request):
-        bearer_token = self.get_bearer_token(request)
-        if bearer_token is None:
-            return None
-
-        try:
-            userinfo = self.get_userinfo(bearer_token)
-        except HTTPError:
-            msg = _('Invalid Authorization header. Unable to verify bearer token')
-            raise AuthenticationFailed(msg)
-
-        user = api_settings.OIDC_RESOLVE_USER_FUNCTION(request, userinfo)
-
-        return user, UserInfo(userinfo)
-
-    def get_bearer_token(self, request):
-        auth = get_authorization_header(request).split()
-        auth_header_prefix = api_settings.BEARER_AUTH_HEADER_PREFIX.lower()
-        if not auth or smart_str(auth[0].lower()) != auth_header_prefix:
-            return None
-
-        if len(auth) == 1:
-            msg = _('Invalid Authorization header. No credentials provided')
-            raise AuthenticationFailed(msg)
-        elif len(auth) > 2:
-            msg = _(
-                'Invalid Authorization header. Credentials string should not contain spaces.')
-            raise AuthenticationFailed(msg)
-
-        return auth[1]
-
-    @cache(ttl=api_settings.OIDC_BEARER_TOKEN_EXPIRATION_TIME)
-    def get_userinfo(self, token):
-        userinfo_endpoint = self.oidc_config.get('userinfo_endpoint', api_settings.USERINFO_ENDPOINT)
-        if not userinfo_endpoint:
-            raise AuthenticationFailed(_('Invalid userinfo_endpoint URL. Did not find a URL from OpenID connect '
-                                         'discovery metadata nor settings.OIDC_AUTH.USERINFO_ENDPOINT.'))
-
-        response = requests.get(userinfo_endpoint, headers={
-            'Authorization': 'Bearer {0}'.format(token.decode('ascii'))})
-        response.raise_for_status()
-
-        return response.json()
 
 
 class JWTToken(dict):
     """Wrapper class to allow checks to see if the object is a JWT token"""
     pass
 
-class JSONWebTokenAuthentication(BaseOidcAuthentication):
+class JSONWebTokenAuthentication(BaseAuthentication):
     """Token based authentication using the JSON Web Token standard"""
 
     www_authenticate_realm = 'api'
