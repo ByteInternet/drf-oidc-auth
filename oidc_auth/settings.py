@@ -5,6 +5,7 @@ USER_SETTINGS = getattr(settings, 'OIDC_AUTH', None)
 
 DEFAULTS = {
     'OIDC_ENDPOINT': None,
+    'JWKS_ENDPOINT': None,
 
     # Will only accept tokens with 'iss' claim that matches this
     'ISSUER': None,

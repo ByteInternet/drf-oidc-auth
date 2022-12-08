@@ -145,7 +145,7 @@ class JSONWebTokenAuthentication(BaseOidcAuthentication):
 
     @cache(ttl=api_settings.OIDC_JWKS_EXPIRATION_TIME)
     def jwks_data(self):
-        r = request("GET", self.oidc_config['jwks_uri'], allow_redirects=True)
+        r = request("GET", api_settings.JWKS_ENDPOINT, allow_redirects=True)
         r.raise_for_status()
         return r.json()
 
