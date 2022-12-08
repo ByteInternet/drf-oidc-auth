@@ -162,7 +162,7 @@ class JSONWebTokenAuthentication(BaseOidcAuthentication):
         try:
             id_token = jwt.decode(
                 jwt_value.decode('ascii'),
-                self.jwks(),
+                key=self.jwks(),
                 claims_cls=IDToken,
                 claims_options=self.claims_options
             )
