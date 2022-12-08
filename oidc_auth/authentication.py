@@ -8,7 +8,6 @@ from authlib.jose.errors import (BadSignatureError, DecodeError,
 from authlib.oidc.core.claims import IDToken
 from authlib.oidc.discovery import get_well_known_url
 from django.utils.encoding import smart_str
-from django.utils.functional import cached_property
 from django.utils.translation import gettext as _
 from requests import request
 from requests.exceptions import HTTPError
@@ -105,10 +104,12 @@ class JSONWebTokenAuthentication(BaseOidcAuthentication):
             'iss': {
                 'essential': True,
                 'values': [self.issuer]
+            },
+            'aud': {
+                'essential': True,
+                'values': [self.audience]
             }
         }
-        for key, value in api_settings.OIDC_CLAIMS_OPTIONS.items():
-            _claims_options[key] = value
         return _claims_options
 
     def authenticate(self, request):
@@ -148,9 +149,14 @@ class JSONWebTokenAuthentication(BaseOidcAuthentication):
         r.raise_for_status()
         return r.json()
 
-    @cached_property
+    @property
     def issuer(self):
-        return self.oidc_config['issuer']
+        return api_settings.ISSUER
+
+    @property
+    def audience(self):
+        return api_settings.AUDIENCE
+
 
     def decode_jwt(self, jwt_value):
         try:

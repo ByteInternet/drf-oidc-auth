@@ -6,16 +6,11 @@ USER_SETTINGS = getattr(settings, 'OIDC_AUTH', None)
 DEFAULTS = {
     'OIDC_ENDPOINT': None,
 
-    # Currently unimplemented
-    'OIDC_ENDPOINTS': [],
+    # Will only accept tokens with 'iss' claim that matches this
+    'ISSUER': None,
 
-    # The Claims Options can now be defined by a static string.
-    # ref: https://docs.authlib.org/en/latest/jose/jwt.html#jwt-payload-claims-validation
-    'OIDC_CLAIMS_OPTIONS': {
-        'aud': {
-            'essential': True,
-        }
-    },
+    # Will only accept tokens with 'aud' claim that matches this
+    'AUDIENCE': None,
 
     # Time before JWKS will be refreshed
     'OIDC_JWKS_EXPIRATION_TIME': 24 * 60 * 60,
