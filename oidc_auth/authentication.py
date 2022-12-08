@@ -15,7 +15,6 @@ from rest_framework.exceptions import AuthenticationFailed
 from .settings import api_settings
 from .util import cache
 
-logging.basicConfig()
 logger = logging.getLogger(__name__)
 
 jwt = JsonWebToken(['RS256', 'RS512'])

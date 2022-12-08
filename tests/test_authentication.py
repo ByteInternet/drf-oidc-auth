@@ -1,5 +1,5 @@
 import sys
-
+import logging
 from authlib.jose.errors import BadSignatureError, DecodeError
 from django.http import HttpResponse
 from django.test import TestCase
@@ -21,6 +21,8 @@ try:
     from unittest.mock import patch
 except ImportError:
     from mock import patch
+
+logging.basicConfig()
 
 
 class TokenPermission(BasePermission):
