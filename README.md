@@ -1,5 +1,8 @@
 # OpenID Connect authentication for Django Rest Framework
 
+This is a fork of the original [OpenID Connect authentication for Django Rest Framework
+by ByteInternet ](https://github.com/Uninett/drf-oidc-auth).
+
 This package contains an authentication mechanism for authenticating
 users of a REST API using tokens obtained from OpenID Connect.
 
