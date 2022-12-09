@@ -9,8 +9,8 @@ DEFAULTS = {
     # a url for a JWKS endpoint
     'ISSUERS': {},
 
-    # Will only accept tokens with 'aud' claim that matches this
-    'AUDIENCE': None,
+    # Will only accept tokens with 'aud' claim that matches a string in this list
+    'AUDIENCES': None,
 
     # Time before JWKS will be refreshed
     'OIDC_JWKS_EXPIRATION_TIME': 24 * 60 * 60,

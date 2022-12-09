@@ -38,8 +38,8 @@ registered as the default authentication classes.
 And configure the module itself in settings.py:
 ```py
 OIDC_AUTH = {
-    # Will only accept tokens with 'aud' claim that matches this
-    'AUDIENCE': 'myapp',
+    # Will only accept tokens with 'aud' claim that matches a string in this list
+    'AUDIENCES': ['myapp'],
 
     # Dict of issuers mapping to key source. key can either be type PEM, then the key value
     # should be a string containing a public key in PEM format. if type is JWKS, then key should

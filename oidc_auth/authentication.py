@@ -44,7 +44,7 @@ class JSONWebTokenAuthentication(BaseAuthentication):
             },
             'aud': {
                 'essential': True,
-                'values': [self.audience]
+                'values': self.audiences
             }
         }
         return _claims_options
@@ -78,8 +78,8 @@ class JSONWebTokenAuthentication(BaseAuthentication):
         return auth[1]
 
     @property
-    def audience(self):
-        return api_settings.AUDIENCE
+    def audiences(self):
+        return api_settings.AUDIENCES
 
     def get_issuer_from_raw_token(self, token):
         claims = pyjwt.decode(token, options={"verify_signature": False})

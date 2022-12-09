@@ -11,7 +11,7 @@ REST_FRAMEWORK = {
 }
 ROOT_URLCONF = 'tests.test_authentication'
 OIDC_AUTH = {
-    'AUDIENCE': 'you',
+    'AUDIENCES': ['you'],
     'ISSUERS': {
         'http://example.com': {
             'type': "JWKS",
