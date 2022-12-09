@@ -1,19 +1,31 @@
 import json
+import logging
 from requests.models import Response
 from authlib.jose import JsonWebToken, KeySet, RSAKey
 try:
     from unittest.mock import patch, Mock
 except ImportError:
     from mock import patch, Mock
+from cryptography.hazmat.primitives import serialization as crypto_serialization
 
-key = RSAKey.generate_key(is_private=True)
+logger = logging.getLogger(__name__)
+
+jwk_key = RSAKey.generate_key(is_private=True)
+pem_key = RSAKey.generate_key(is_private=True)
+PUBLIC_KEY = pem_key.get_public_key().public_bytes(
+    encoding=crypto_serialization.Encoding.PEM,
+    format= crypto_serialization.PublicFormat.SubjectPublicKeyInfo,
+).decode("utf-8")
+
+jwt = JsonWebToken(['RS256', 'RS512'])
 
 
-def make_id_token(sub,
+def make_id_token(sub="user",
                   iss='http://example.com',
                   aud='you',
                   exp=999999999999,  # tests will start failing in September 33658
                   iat=999999999999,
+                  key=jwk_key,
                   **kwargs):
     return make_jwt(
         dict(
@@ -23,11 +35,20 @@ def make_id_token(sub,
             iat=iat,
             sub=str(sub),
             **kwargs
-        )
+        ),
+        key,
     ).decode('ascii')
 
 
-def make_jwt(payload):
+def make_local_token():
+    return make_id_token(iss="local", key=pem_key)
+
+
+def make_remote_token():
+    return make_id_token()
+
+
+def make_jwt(payload, key):
     jwt = JsonWebToken(['RS256'])
     jws = jwt.encode(
         {'alg': 'RS256', 'kid': key.as_dict(add_kid=True).get('kid')}, payload, key=key)
@@ -72,9 +93,9 @@ class AuthenticationTestCaseMixin(object):
                                      "userinfo_endpoint": "http://example.com/userinfo"})
         self.mock_get = self.patch('requests.get')
         self.mock_get.side_effect = self.responder.get
-        keys = KeySet(keys=[key])
+        keys = KeySet(keys=[jwk_key])
         self.patch(
-            'oidc_auth.authentication.request',
+            'oidc_auth.decode_key.request',
             return_value=Mock(
                 status_code=200,
                 json=keys.as_json

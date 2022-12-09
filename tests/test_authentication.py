@@ -4,18 +4,13 @@ from authlib.jose.errors import BadSignatureError, DecodeError
 from django.http import HttpResponse
 from django.test import TestCase
 from django.urls import re_path as url
-from oidc_auth.authentication import (JSONWebTokenAuthentication,
-                                      JWTToken,
-                                      UserInfo,)
-from oidc_auth.test import AuthenticationTestCaseMixin, make_id_token
+from oidc_auth.authentication import JSONWebTokenAuthentication, JWTToken
+from oidc_auth.test import AuthenticationTestCaseMixin, make_id_token, make_local_token
 from rest_framework.permissions import BasePermission
 from rest_framework.views import APIView
 
 if sys.version_info > (3,):
     long = int
-else:
-    class ConnectionError(OSError):
-        pass
 
 try:
     from unittest.mock import patch
@@ -23,7 +18,7 @@ except ImportError:
     from mock import patch
 
 logging.basicConfig()
-
+logger = logging.getLogger(__name__)
 
 class TokenPermission(BasePermission):
     """Checks if the token has correct permissions"""
@@ -32,15 +27,13 @@ class TokenPermission(BasePermission):
         token = request.auth  # type: JWTToken
         if not token:
             return False
-        if not isinstance(token, JWTToken) and not isinstance(token, UserInfo):
+        if not isinstance(token, JWTToken):
             return False
         return True
 
 class MockView(APIView):
     permission_classes = (TokenPermission,)
-    authentication_classes = (
-        JSONWebTokenAuthentication,
-    )
+    authentication_classes = (JSONWebTokenAuthentication,)
 
     def get(self, request):
         return HttpResponse('a')
@@ -56,6 +49,12 @@ class TestJWTAuthentication(AuthenticationTestCaseMixin, TestCase):
 
     def test_using_valid_jwt(self):
         auth = 'JWT ' + make_id_token(self.username)
+        resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.content.decode(), 'a')
+
+    def test_using_valid_jwt_and_local_issuer(self):
+        auth = 'JWT ' + make_local_token()
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.content.decode(), 'a')

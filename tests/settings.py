@@ -1,3 +1,4 @@
+from oidc_auth.test import PUBLIC_KEY
 SECRET_KEY = 'secret'
 DATABASES = {
     'default': {
@@ -10,7 +11,15 @@ REST_FRAMEWORK = {
 }
 ROOT_URLCONF = 'tests.test_authentication'
 OIDC_AUTH = {
-    'JWKS_ENDPOINT': 'http://example.com',
     'AUDIENCE': 'you',
-    'ISSUER': 'http://example.com',
+    'ISSUERS': {
+        'http://example.com': {
+            'type': "JWKS",
+            'key': "http://example.com"
+        },
+        'local': {
+            'type': "PEM",
+            'key': PUBLIC_KEY,
+        }
+    },
 }

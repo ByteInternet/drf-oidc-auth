@@ -1,32 +1,27 @@
 import logging
 import time
 
-from authlib.jose import JsonWebKey, JsonWebToken
+from authlib.jose import JsonWebToken
 from authlib.jose.errors import (BadSignatureError, DecodeError,
                                  ExpiredTokenError, JoseError)
 from authlib.oidc.core.claims import IDToken
+import jwt as pyjwt
 from django.utils.encoding import smart_str
 from django.utils.translation import gettext as _
-from requests import request
 from rest_framework.authentication import (BaseAuthentication,
                                            get_authorization_header)
 from rest_framework.exceptions import AuthenticationFailed
 
 from .settings import api_settings
-from .util import cache
+from .decode_key import PEMDecodeKey, JWKSDecodeKey
 
 logger = logging.getLogger(__name__)
 
 jwt = JsonWebToken(['RS256', 'RS512'])
 
 def get_user_none(request, id_token):
+    """Default function for mapping token to user. Returns None"""
     return None
-
-
-class UserInfo(dict):
-    """Wrapper class to allow checks to see if the object is a JWT token"""
-    pass
-
 
 class JWTToken(dict):
     """Wrapper class to allow checks to see if the object is a JWT token"""
@@ -36,13 +31,16 @@ class JSONWebTokenAuthentication(BaseAuthentication):
     """Token based authentication using the JSON Web Token standard"""
 
     www_authenticate_realm = 'api'
+    ISSUER_TYPES = {
+        'JWKS': JWKSDecodeKey,
+        'PEM': PEMDecodeKey,
+    }
 
-    @property
-    def claims_options(self):
+    def claims_options(self, issuer):
         _claims_options = {
             'iss': {
                 'essential': True,
-                'values': [self.issuer]
+                'values': [issuer]
             },
             'aud': {
                 'essential': True,
@@ -79,38 +77,41 @@ class JSONWebTokenAuthentication(BaseAuthentication):
 
         return auth[1]
 
-    def jwks(self):
-        return JsonWebKey.import_key_set(self.jwks_data())
-
-    @cache(ttl=api_settings.OIDC_JWKS_EXPIRATION_TIME)
-    def jwks_data(self):
-        r = request("GET", api_settings.JWKS_ENDPOINT, allow_redirects=True)
-        r.raise_for_status()
-        return r.json()
-
-    @property
-    def issuer(self):
-        return api_settings.ISSUER
-
     @property
     def audience(self):
         return api_settings.AUDIENCE
 
+    def get_issuer_from_raw_token(self, token):
+        claims = pyjwt.decode(token, options={"verify_signature": False})
+        if 'iss' not in claims:
+            raise AuthenticationFailed("Token is missing 'iss' claim")
+        return claims['iss']
+
+    def get_key_for_issuer(self, target_issuer):
+        issuer = api_settings.ISSUERS.get(target_issuer)
+        if not issuer:
+            raise AuthenticationFailed("Invalid 'iss' claim")
+        type = issuer['type']
+        key_class = self.ISSUER_TYPES[type]
+        key = key_class(issuer['key'])
+        return key.key
 
     def decode_jwt(self, jwt_value):
         try:
+            issuer = self.get_issuer_from_raw_token(jwt_value)
+            key = self.get_key_for_issuer(issuer)
             id_token = jwt.decode(
                 jwt_value.decode('ascii'),
-                key=self.jwks(),
+                key=key,
                 claims_cls=IDToken,
-                claims_options=self.claims_options
+                claims_options=self.claims_options(issuer)
             )
-        except (BadSignatureError, DecodeError):
+        except (BadSignatureError, DecodeError, pyjwt.exceptions.DecodeError):
             msg = _(
                 'Invalid Authorization header. JWT Signature verification failed.')
             logger.exception(msg)
             raise AuthenticationFailed(msg)
-        except AssertionError:
+        except (AssertionError):
             msg = _(
                 'Invalid Authorization header. Please provide base64 encoded ID Token'
             )

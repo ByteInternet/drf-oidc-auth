@@ -3,12 +3,14 @@
 This is a fork of the original [OpenID Connect authentication for Django Rest Framework
 by ByteInternet ](https://github.com/Uninett/drf-oidc-auth).
 
-This package contains an authentication mechanism for authenticating
-users of a REST API using tokens obtained from OpenID Connect.
+This package contains authentication mechanisms for authenticating
+JWT tokens. Multiple issuers are allowed, and for each issuer
+a key source must be defined. The key source can either be a
+JWKS endpoint, or a string containing a public key in PEM format.
 
-Currently, it only supports JWT tokens. JWT tokens will be
-validated against the public keys of an OpenID connect authorization
-service.
+This implementation does not rely on the Django user system, but
+can be configured to authenticate as a user based on the contents
+of the token.
 
 # Installation
 
@@ -36,33 +38,35 @@ registered as the default authentication classes.
 And configure the module itself in settings.py:
 ```py
 OIDC_AUTH = {
-    # Specify JWK endpoint
-    'JWKS_ENDPOINT': 'http://example.com/openid/jwks',
-
     # Will only accept tokens with 'aud' claim that matches this
     'AUDIENCE': 'myapp',
 
-    # Will only accept tokens with 'iss' claim that matches this
-    'ISSUER': 'http://example.com',
+    # Dict of issuers mapping to key source. key can either be type PEM, then the key value
+    # should be a string containing a public key in PEM format. if type is JWKS, then key should
+    # a url for a JWKS endpoint
+    'ISSUERS': {
+        'issuer1': {
+            'type': "PEM",
+            'key': """-----BEGIN RSA PUBLIC KEY-----
+publickeydatahere..
+-----END RSA PUBLIC KEY-----"""
+        },
+        'issuer2': {
+            'type': "JWKS",
+            'key': "http://example.com/openid/jwks"
+        }
+    },
 
     # (Optional) Function that resolves id_token into user.
     # This function receives a request and an id_token dict and expects to
-    # return a User object. The default implementation tries to find the user
-    # based on username (natural key) taken from the 'sub'-claim of the
-    # id_token.
+    # return a User object. The default implementation returns None.
     'OIDC_RESOLVE_USER_FUNCTION': 'oidc_auth.authentication.get_user_none',
 
     # (Optional) Time before signing keys will be refreshed (default 24 hrs)
     'OIDC_JWKS_EXPIRATION_TIME': 24*60*60,
 
-    # (Optional) Time before bearer token validity is verified again (default 10 minutes)
-    'OIDC_BEARER_TOKEN_EXPIRATION_TIME': 10*60,
-
     # (Optional) Token prefix in JWT authorization header (default 'JWT')
     'JWT_AUTH_HEADER_PREFIX': 'JWT',
-
-    # (Optional) Token prefix in Bearer authorization header (default 'Bearer')
-    'BEARER_AUTH_HEADER_PREFIX': 'Bearer',
 
     # (Optional) Which Django cache to use
     'OIDC_CACHE_NAME': 'default',
