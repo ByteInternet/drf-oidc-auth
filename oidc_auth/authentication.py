@@ -42,11 +42,9 @@ class JSONWebTokenAuthentication(BaseAuthentication):
                 'essential': True,
                 'values': [issuer]
             },
-            'aud': {
-                'essential': True,
-                'values': self.audiences
-            }
         }
+        for key, value in api_settings.OIDC_CLAIMS_OPTIONS.items():
+            _claims_options[key] = value
         return _claims_options
 
     def authenticate(self, request):

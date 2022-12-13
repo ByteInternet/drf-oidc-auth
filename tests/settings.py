@@ -11,7 +11,12 @@ REST_FRAMEWORK = {
 }
 ROOT_URLCONF = 'tests.test_authentication'
 OIDC_AUTH = {
-    'AUDIENCES': ['you'],
+    'OIDC_CLAIMS_OPTIONS': {
+        'aud': {
+            'essential': True,
+            'values': ['you'],
+        }
+    },
     'ISSUERS': {
         'http://example.com': {
             'type': "JWKS",

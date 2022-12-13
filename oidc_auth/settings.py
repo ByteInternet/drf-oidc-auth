@@ -9,8 +9,16 @@ DEFAULTS = {
     # a url for a JWKS endpoint
     'ISSUERS': {},
 
-    # Will only accept tokens with 'aud' claim that matches a string in this list
-    'AUDIENCES': None,
+    # The Claims Options can now be defined by a static string.
+    # It is recommended to set a required value for the 'aud' claim.
+    # The ISSUERS setting is used to configure the 'iss' claim option,
+    # so setting the 'iss' claim here will override this automatic configuration.
+    # ref: https://docs.authlib.org/en/latest/jose/jwt.html#jwt-payload-claims-validation
+    'OIDC_CLAIMS_OPTIONS': {
+        'aud': {
+            'essential': True,
+        }
+    },
 
     # Time before JWKS will be refreshed
     'OIDC_JWKS_EXPIRATION_TIME': 24 * 60 * 60,
