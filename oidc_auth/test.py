@@ -25,20 +25,24 @@ def make_id_token(sub="user",
                   aud='you',
                   exp=999999999999,  # tests will start failing in September 33658
                   iat=999999999999,
+                  nbf=13151351,
                   key=jwk_key,
                   **kwargs):
-    return make_jwt(
-        dict(
+    payload = dict(
             iss=iss,
             aud=aud,
             exp=exp,
             iat=iat,
+            nbf=nbf,
             sub=str(sub),
             **kwargs
-        ),
+    )
+    # remove keys with empty values
+    clean_payload = dict((k, v) for k, v in payload.items() if v)
+    return make_jwt(
+        clean_payload,
         key,
     ).decode('ascii')
-
 
 def make_local_token():
     return make_id_token(iss="local", key=pem_key)

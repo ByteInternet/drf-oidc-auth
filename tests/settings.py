@@ -15,12 +15,15 @@ OIDC_AUTH = {
         'aud': {
             'essential': True,
             'values': ['you'],
+        },
+        'nbf': {
+            'essential': True,
         }
     },
     'ISSUERS': {
         'http://example.com': {
             'type': "JWKS",
-            'key': "http://example.com"
+            'key': "http://example.com",
         },
         'local': {
             'type': "PEM",

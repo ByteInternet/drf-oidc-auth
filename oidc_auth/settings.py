@@ -17,7 +17,10 @@ DEFAULTS = {
     'OIDC_CLAIMS_OPTIONS': {
         'aud': {
             'essential': True,
-        }
+        },
+        'nbf': {
+            'essential': True,
+        },
     },
 
     # Time before JWKS will be refreshed
