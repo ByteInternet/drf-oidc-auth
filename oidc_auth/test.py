@@ -45,7 +45,7 @@ def make_id_token(sub="user",
     ).decode('ascii')
 
 def make_local_token():
-    return make_id_token(iss="local", key=pem_key)
+    return make_id_token(iss="local", key=pem_key, aud="local_aud")
 
 
 def make_remote_token():

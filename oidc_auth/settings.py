@@ -9,15 +9,11 @@ DEFAULTS = {
     # a url for a JWKS endpoint
     'ISSUERS': {},
 
-    # The Claims Options can now be defined by a static string.
-    # It is recommended to set a required value for the 'aud' claim.
-    # The ISSUERS setting is used to configure the 'iss' claim option,
-    # so setting the 'iss' claim here will override this automatic configuration.
+    # The Claims Options can now be defined by a static string
+    # The ISSUERS setting is used to configure the 'iss' and 'aud' claim options,
+    # so do not set these claims here unless you know what you are doing
     # ref: https://docs.authlib.org/en/latest/jose/jwt.html#jwt-payload-claims-validation
     'OIDC_CLAIMS_OPTIONS': {
-        'aud': {
-            'essential': True,
-        },
         'nbf': {
             'essential': True,
         },

@@ -38,33 +38,31 @@ registered as the default authentication classes.
 And configure the module itself in settings.py:
 ```py
 OIDC_AUTH = {
-    # The Claims Options can now be defined by a static string.
-    # It is recommended to set a required value for the 'aud' claim.
-    # The ISSUERS setting is used to configure the 'iss' claim option,
-    # so setting the 'iss' claim here will override this automatic configuration.
+    # The Claims Options can now be defined by a static string
+    # The ISSUERS setting is used to configure the 'iss' and 'aud' claim options,
+    # so do not set these claims here unless you know what you are doing
     # ref: https://docs.authlib.org/en/latest/jose/jwt.html#jwt-payload-claims-validation
     'OIDC_CLAIMS_OPTIONS': {
-        'aud': {
-            'essential': True,
-            'value': "your-service-name",
-        },
         'nbf': {
             'essential': True,
         },
     },
-    # Dict of issuers mapping to key source. key can either be type PEM, then the key value
-    # should be a string containing a public key in PEM format. if type is JWKS, then key should
-    # a url for a JWKS endpoint
+    # Dict of issuers mapping to key source. `type` can be either `PEM` or `JWKS`. If `PEM`, then the `key` value
+    # should be a string containing a public key in PEM format. For `JWKS` it should be the URL for a JWKS endpoint.
+    # `aud` must also be configured per issuer. This should match the value the token issuer sets for the `aud` claim
+    # in the issued tokens.
     'ISSUERS': {
         'issuer1': {
             'type': "PEM",
+            'aud': "your-service-name-for-issuer1",
             'key': """-----BEGIN RSA PUBLIC KEY-----
 publickeydatahere..
------END RSA PUBLIC KEY-----"""
+-----END RSA PUBLIC KEY-----""",
         },
         'issuer2': {
             'type': "JWKS",
-            'key': "http://example.com/openid/jwks"
+            'aud': "your-service-name-for-issuer2",
+            'key': "http://example.com/openid/jwks",
         }
     },
 

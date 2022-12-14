@@ -36,11 +36,15 @@ class JSONWebTokenAuthentication(BaseAuthentication):
         'PEM': PEMDecodeKey,
     }
 
-    def claims_options(self, issuer):
+    def claims_options(self, issuer, audience):
         _claims_options = {
             'iss': {
                 'essential': True,
-                'values': [issuer]
+                'value': issuer
+            },
+            'aud': {
+                'essential': True,
+                'value': audience
             },
         }
         for key, value in api_settings.OIDC_CLAIMS_OPTIONS.items():
@@ -85,24 +89,33 @@ class JSONWebTokenAuthentication(BaseAuthentication):
             raise AuthenticationFailed("Token is missing 'iss' claim")
         return claims['iss']
 
-    def get_key_for_issuer(self, target_issuer):
+    def get_issuer_config(self, target_issuer):
         issuer = api_settings.ISSUERS.get(target_issuer)
         if not issuer:
             raise AuthenticationFailed("Invalid 'iss' claim")
+        return issuer
+
+    def get_key_for_issuer(self, target_issuer):
+        issuer = self.get_issuer_config(target_issuer)
         type = issuer['type']
         key_class = self.ISSUER_TYPES[type]
         key = key_class(issuer['key'])
         return key.key
 
+    def get_allowed_aud_for_issuer(self, target_issuer):
+        issuer = self.get_issuer_config(target_issuer)
+        return issuer['aud']
+
     def decode_jwt(self, jwt_value):
         try:
             issuer = self.get_issuer_from_raw_token(jwt_value)
             key = self.get_key_for_issuer(issuer)
+            audience = self.get_allowed_aud_for_issuer(issuer)
             id_token = jwt.decode(
                 jwt_value.decode('ascii'),
                 key=key,
                 claims_cls=IDToken,
-                claims_options=self.claims_options(issuer)
+                claims_options=self.claims_options(issuer, audience)
             )
         except (BadSignatureError, DecodeError, pyjwt.exceptions.DecodeError):
             msg = _(

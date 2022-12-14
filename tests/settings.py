@@ -10,12 +10,9 @@ REST_FRAMEWORK = {
     'UNAUTHENTICATED_USER': None,
 }
 ROOT_URLCONF = 'tests.test_authentication'
+
 OIDC_AUTH = {
     'OIDC_CLAIMS_OPTIONS': {
-        'aud': {
-            'essential': True,
-            'values': ['you'],
-        },
         'nbf': {
             'essential': True,
         }
@@ -24,10 +21,12 @@ OIDC_AUTH = {
         'http://example.com': {
             'type': "JWKS",
             'key': "http://example.com",
+            'aud': 'you',
         },
         'local': {
             'type': "PEM",
             'key': PUBLIC_KEY,
+            'aud': 'local_aud',
         }
     },
 }
