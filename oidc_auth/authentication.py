@@ -79,15 +79,14 @@ class JSONWebTokenAuthentication(BaseAuthentication):
 
         return auth[1]
 
-    @property
-    def audiences(self):
-        return api_settings.AUDIENCES
-
     def get_issuer_from_raw_token(self, token):
-        claims = pyjwt.decode(token, options={"verify_signature": False})
+        claims = self.get_claims_without_validation(token)
         if 'iss' not in claims:
             raise AuthenticationFailed("Token is missing 'iss' claim")
         return claims['iss']
+
+    def get_claims_without_validation(self, token):
+        return pyjwt.decode(token, options={"verify_signature": False})
 
     def get_issuer_config(self, target_issuer):
         issuer = api_settings.ISSUERS.get(target_issuer)
