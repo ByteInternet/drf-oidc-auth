@@ -37,7 +37,6 @@ class JWKSDecodeKey(DecodeKey):
         key = self.get_public_key(kid)
         return key
 
-    @cache(ttl=api_settings.OIDC_JWKS_EXPIRATION_TIME)
     def jwks_data(self):
         r = request("GET", self.key_source, allow_redirects=True)
         r.raise_for_status()
