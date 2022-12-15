@@ -149,3 +149,13 @@ class TestJWTAuthentication(AuthenticationTestCaseMixin, TestCase):
         auth = 'JWT ' + make_id_token(self.username, nbf=None)
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 401)
+
+    def test_jwks_auth_should_fail_with_missing_kid(self):
+        auth = 'JWT ' + make_id_token(self.username, include_kid=False)
+        resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
+        self.assertEqual(resp.status_code, 401)
+
+    def test_jwks_auth_should_fail_with_invalid_kid(self):
+        auth = 'JWT ' + make_id_token(self.username, kid="fake_kid")
+        resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
+        self.assertEqual(resp.status_code, 401)

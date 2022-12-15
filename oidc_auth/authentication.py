@@ -86,6 +86,7 @@ class JSONWebTokenAuthentication(BaseAuthentication):
         return claims['iss']
 
     def get_claims_without_validation(self, token):
+        """Raises pyjwt.exceptions.DecodeError if token could not be decoded"""
         return pyjwt.decode(token, options={"verify_signature": False})
 
     def get_issuer_config(self, target_issuer):
@@ -124,6 +125,11 @@ class JSONWebTokenAuthentication(BaseAuthentication):
         except (AssertionError):
             msg = _(
                 'Invalid Authorization header. Please provide base64 encoded ID Token'
+            )
+            raise AuthenticationFailed(msg)
+        except (ValueError):
+            msg = _(
+                'Invalid token headers. Token must include kid value'
             )
             raise AuthenticationFailed(msg)
 

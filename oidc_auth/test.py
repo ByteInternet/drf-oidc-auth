@@ -27,6 +27,8 @@ def make_id_token(sub="user",
                   iat=999999999999,
                   nbf=13151351,
                   key=jwk_key,
+                  include_kid=True,
+                  kid=None,
                   **kwargs):
     payload = dict(
             iss=iss,
@@ -39,25 +41,25 @@ def make_id_token(sub="user",
     )
     # remove keys with empty values
     clean_payload = dict((k, v) for k, v in payload.items() if v)
-    return make_jwt(
-        clean_payload,
-        key,
-    ).decode('ascii')
+    headers = {'alg': 'RS256'}
+    if include_kid:
+        headers['kid'] = kid if kid else key.as_dict(add_kid=True).get('kid')
+    return make_jwt(clean_payload,headers,key).decode('ascii')
 
 def make_local_token():
     return make_id_token(iss="local", key=pem_key, aud="local_aud")
-
 
 def make_remote_token():
     return make_id_token()
 
 
-def make_jwt(payload, key):
+def make_jwt(payload, headers, key):
     jwt = JsonWebToken(['RS256'])
-    jws = jwt.encode(
-        {'alg': 'RS256', 'kid': key.as_dict(add_kid=True).get('kid')}, payload, key=key)
+    jws = jwt.encode(headers, payload, key=key)
     return jws
 
+def make_jwt_without_kid():
+    pass
 
 class FakeRequests(object):
     def __init__(self):
