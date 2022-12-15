@@ -108,6 +108,7 @@ class JSONWebTokenAuthentication(BaseAuthentication):
                 issuer=issuer,
             )
             return validated_token
+        except jwt.exceptions.DecodeError as e:
+            raise AuthenticationFailed("Error decoding token: invalid format")
         except jwt.exceptions.PyJWTError as e:
-            logger.error(e)
             raise AuthenticationFailed(f"Error validating token: {e}")
