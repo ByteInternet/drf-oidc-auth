@@ -1,12 +1,14 @@
 from requests import request
+import logging
 import json
 
 import jwt
-
 from rest_framework.exceptions import AuthenticationFailed
 
 from .settings import api_settings
 from .util import cache
+
+logger = logging.getLogger(__name__)
 
 class DecodeKey(object):
     key_source = None
@@ -39,7 +41,7 @@ class JWKSDecodeKey(DecodeKey):
     def jwks_data(self):
         r = request("GET", self.key_source, allow_redirects=True)
         r.raise_for_status()
-        return json.loads(r.json())
+        return r.json()
 
     def get_kid(self, token):
         """Gets the kid value from the header of a raw token"""

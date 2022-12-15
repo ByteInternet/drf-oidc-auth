@@ -92,18 +92,11 @@ class AuthenticationTestCaseMixin(object):
         return patched
 
     def setUp(self):
-        self.responder = FakeRequests()
-        self.responder.set_response("http://example.com/.well-known/openid-configuration",
-                                    {"jwks_uri": "http://example.com/jwks",
-                                     "issuer": "http://example.com",
-                                     "userinfo_endpoint": "http://example.com/userinfo"})
-        self.mock_get = self.patch('requests.get')
-        self.mock_get.side_effect = self.responder.get
         keys = KeySet(keys=[jwk_key])
         self.patch(
             'oidc_auth.decode_key.request',
             return_value=Mock(
                 status_code=200,
-                json=keys.as_json
+                json=keys.as_dict
             )
         )
