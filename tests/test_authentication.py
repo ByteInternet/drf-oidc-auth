@@ -1,21 +1,15 @@
 import sys
 import logging
-from authlib.jose.errors import BadSignatureError, DecodeError
 from django.http import HttpResponse
 from django.test import TestCase
 from django.urls import re_path as url
 from oidc_auth.authentication import JSONWebTokenAuthentication, JWTToken
-from oidc_auth.test import AuthenticationTestCaseMixin, make_id_token, make_local_token, make_jwt
+from oidc_auth.test import AuthenticationTestCaseMixin, make_id_token, make_local_token
 from rest_framework.permissions import BasePermission
 from rest_framework.views import APIView
 
 if sys.version_info > (3,):
     long = int
-
-try:
-    from unittest.mock import patch
-except ImportError:
-    from mock import patch
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
@@ -115,21 +109,6 @@ class TestJWTAuthentication(AuthenticationTestCaseMixin, TestCase):
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth + 'x')
         self.assertEqual(resp.status_code, 401)
 
-    @patch('oidc_auth.authentication.jwt.decode')
-    @patch('oidc_auth.authentication.logger')
-    def test_decode_jwt_logs_exception_message_when_decode_throws_exception(
-        self,
-        logger_mock, decode
-    ):
-        auth = 'JWT ' + make_id_token(self.username)
-        decode.side_effect = DecodeError, BadSignatureError
-
-        resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
-
-        self.assertEqual(resp.status_code, 401)
-        logger_mock.exception.assert_called_once_with(
-            'Invalid Authorization header. JWT Signature verification failed.')
-
     def test_should_fail_without_aud_claim(self):
         auth = 'JWT ' + make_id_token(self.username, aud=None)
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
@@ -159,3 +138,8 @@ class TestJWTAuthentication(AuthenticationTestCaseMixin, TestCase):
         auth = 'JWT ' + make_id_token(self.username, kid="fake_kid")
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 401)
+
+    def test_should_succeed_without_iat_kid(self):
+        auth = 'JWT ' + make_id_token(self.username, iat=None)
+        resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
+        self.assertEqual(resp.status_code, 200)

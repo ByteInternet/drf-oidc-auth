@@ -4,20 +4,11 @@ from rest_framework.settings import APISettings
 USER_SETTINGS = getattr(settings, 'OIDC_AUTH', None)
 
 DEFAULTS = {
-    # Dict of issuers mapping to key source. key can either be type PEM, then the key value
-    # should be a string containing a public key in PEM format. if type is JWKS, then key should
-    # a url for a JWKS endpoint
+    # Dict of issuers mapping to key source. `type` can be either `PEM` or `JWKS`. If `PEM`, then the `key` value
+    # should be a string containing a public key in PEM format. For `JWKS` it should be the URL for a JWKS endpoint.
+    # `aud` must also be configured per issuer. This should match the value the token issuer sets for the `aud` claim
+    # in the issued tokens.
     'ISSUERS': {},
-
-    # The Claims Options can now be defined by a static string
-    # The ISSUERS setting is used to configure the 'iss' and 'aud' claim options,
-    # so do not set these claims here unless you know what you are doing
-    # ref: https://docs.authlib.org/en/latest/jose/jwt.html#jwt-payload-claims-validation
-    'OIDC_CLAIMS_OPTIONS': {
-        'nbf': {
-            'essential': True,
-        },
-    },
 
     # Time before JWKS will be refreshed
     'OIDC_JWKS_EXPIRATION_TIME': 24 * 60 * 60,
