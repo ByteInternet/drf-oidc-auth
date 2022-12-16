@@ -2,6 +2,7 @@ import json
 import logging
 from requests.models import Response
 from authlib.jose import JsonWebToken, KeySet, RSAKey
+import jwt as pyjwt
 try:
     from unittest.mock import patch, Mock
 except ImportError:
@@ -85,6 +86,18 @@ class FakeRequests(object):
 class AuthenticationTestCaseMixin(object):
     username = 'henk'
 
+
+    def get_signing_key_from_jwt_mock(self, token):
+        header = pyjwt.get_unverified_header(token)
+        kid = header.get("kid")
+        if kid != jwk_key.as_dict(add_kid=True).get('kid'):
+            raise pyjwt.exceptions.PyJWKClientError("Invalid Kid")
+        key = jwk_key.get_public_key().public_bytes(
+            encoding=crypto_serialization.Encoding.PEM,
+            format=crypto_serialization.PublicFormat.SubjectPublicKeyInfo,
+        ).decode("utf-8")
+        return Mock(key=key)
+
     def patch(self, thing_to_mock, **kwargs):
         patcher = patch(thing_to_mock, **kwargs)
         patched = patcher.start()
@@ -98,5 +111,11 @@ class AuthenticationTestCaseMixin(object):
             return_value=Mock(
                 status_code=200,
                 json=keys.as_dict
+            )
+        )
+        self.patch(
+            'oidc_auth.decode_key.PyJWKClient',
+            return_value=Mock(
+                get_signing_key_from_jwt=self.get_signing_key_from_jwt_mock,
             )
         )

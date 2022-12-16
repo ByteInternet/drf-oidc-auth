@@ -3,6 +3,7 @@ import logging
 import json
 
 import jwt
+from jwt import PyJWKClient
 from rest_framework.exceptions import AuthenticationFailed
 
 from .settings import api_settings
@@ -33,9 +34,9 @@ class JWKSDecodeKey(DecodeKey):
 
     @property
     def key(self):
-        kid = self.get_kid(self.token)
-        key = self.get_public_key(kid)
-        return key
+        jwks_client = PyJWKClient(self.key_source)
+        signing_key = jwks_client.get_signing_key_from_jwt(self.token)
+        return signing_key.key
 
     def jwks_data(self):
         r = request("GET", self.key_source, allow_redirects=True)
@@ -52,6 +53,9 @@ class JWKSDecodeKey(DecodeKey):
 
     def get_public_key(self, kid):
         """Gets public key from OIDC endpoint that matches kid"""
+        optional_custom_headers = {"User-agent": "custom-user-agent"}
+        jwks_client = PyJWKClient(self.key_source, headers=optional_custom_headers)
+        signing_key = jwks_client.get_signing_key_from_jwt(self.token)
         jwks = self.jwks_data()
         for jwk in jwks.get("keys"):
             if jwk["kid"] == kid:

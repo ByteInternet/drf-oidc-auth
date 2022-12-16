@@ -96,6 +96,8 @@ class JSONWebTokenAuthentication(BaseAuthentication):
             issuer = self.get_issuer_from_raw_token(jwt_value)
             key = self.get_key_for_issuer(jwt_value, issuer)
             audience = self.get_allowed_aud_for_issuer(issuer)
+            logger.error(f"Key: {key}")
+            raise AuthenticationFailed(f"This is what the key looks like: {key}")
             validated_token = jwt.decode(
                 jwt=jwt_value,
                 algorithms=self.SUPPORTED_ALGORITHMS,
@@ -111,4 +113,6 @@ class JSONWebTokenAuthentication(BaseAuthentication):
         except jwt.exceptions.DecodeError as e:
             raise AuthenticationFailed("Error decoding token: invalid format")
         except jwt.exceptions.PyJWTError as e:
+            logger.error(e)
+            logger.error(type(e))
             raise AuthenticationFailed(f"Error validating token: {e}")
