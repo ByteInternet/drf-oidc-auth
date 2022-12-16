@@ -1,7 +1,7 @@
 import logging
 
 import jwt
-
+from jwt import PyJWKClient
 from django.utils.encoding import smart_str
 from django.utils.translation import gettext as _
 from rest_framework.authentication import (BaseAuthentication,
@@ -79,9 +79,17 @@ class JSONWebTokenAuthentication(BaseAuthentication):
     def get_key_for_issuer(self, token, target_issuer):
         issuer = self.get_issuer_config(target_issuer)
         type = issuer['type']
-        key_class = self.ISSUER_TYPES[type]
-        key = key_class(token, issuer['key'])
-        return key.key
+        if type == "JWKS":
+            jwks_client = PyJWKClient(issuer['key'])
+            signing_key = jwks_client.get_signing_key_from_jwt(token)
+            key = signing_key.key
+            raise AuthenticationFailed("GGOT TO END OF JWKS PATH")
+        else:
+            key = issuer['key']
+        return key
+        #key_class = self.ISSUER_TYPES[type]
+        #key = key_class(token, issuer['key'])
+        #return key.key
 
     def get_allowed_aud_for_issuer(self, target_issuer):
         issuer = self.get_issuer_config(target_issuer)
@@ -97,7 +105,6 @@ class JSONWebTokenAuthentication(BaseAuthentication):
             key = self.get_key_for_issuer(jwt_value, issuer)
             audience = self.get_allowed_aud_for_issuer(issuer)
             logger.error(f"Key: {key}")
-            raise AuthenticationFailed(f"This is what the key looks like: {key}")
             validated_token = jwt.decode(
                 jwt=jwt_value,
                 algorithms=self.SUPPORTED_ALGORITHMS,

@@ -119,3 +119,9 @@ class AuthenticationTestCaseMixin(object):
                 get_signing_key_from_jwt=self.get_signing_key_from_jwt_mock,
             )
         )
+        self.patch(
+            'oidc_auth.authentication.PyJWKClient',
+            return_value=Mock(
+                get_signing_key_from_jwt=self.get_signing_key_from_jwt_mock,
+            )
+        )
