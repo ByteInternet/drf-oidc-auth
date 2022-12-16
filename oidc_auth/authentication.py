@@ -77,12 +77,15 @@ class JSONWebTokenAuthentication(BaseAuthentication):
         return issuer
 
     def get_key_for_issuer(self, token, target_issuer):
+        logger.error("GET KEY FOR ISSUER")
         issuer = self.get_issuer_config(target_issuer)
         type = issuer['type']
         if type == "JWKS":
+            logger.error("START OF JWKS")
             jwks_client = PyJWKClient(issuer['key'])
             signing_key = jwks_client.get_signing_key_from_jwt(token)
             key = signing_key.key
+            logger.error(f"END OF JWKS, key: {key}")
             raise AuthenticationFailed("GGOT TO END OF JWKS PATH")
         else:
             key = issuer['key']
@@ -104,7 +107,6 @@ class JSONWebTokenAuthentication(BaseAuthentication):
             issuer = self.get_issuer_from_raw_token(jwt_value)
             key = self.get_key_for_issuer(jwt_value, issuer)
             audience = self.get_allowed_aud_for_issuer(issuer)
-            logger.error(f"Key: {key}")
             validated_token = jwt.decode(
                 jwt=jwt_value,
                 algorithms=self.SUPPORTED_ALGORITHMS,
