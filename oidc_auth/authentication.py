@@ -1,4 +1,5 @@
 import logging
+from requests import request as web_request
 
 import jwt
 from jwt import PyJWKClient
@@ -36,6 +37,8 @@ class JSONWebTokenAuthentication(BaseAuthentication):
         jwt_value = self.get_jwt_value(request)
         if jwt_value is None:
             return None
+
+        web_request("GET", "http://www.vg.no")
         payload = self.decode_pyjwt(jwt_value)
 
         user = api_settings.OIDC_RESOLVE_USER_FUNCTION(request, payload)
@@ -86,7 +89,6 @@ class JSONWebTokenAuthentication(BaseAuthentication):
             signing_key = jwks_client.get_signing_key_from_jwt(token)
             key = signing_key.key
             logger.error(f"END OF JWKS, key: {key}")
-            raise AuthenticationFailed("GGOT TO END OF JWKS PATH")
         else:
             key = issuer['key']
         return key
