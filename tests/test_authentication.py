@@ -44,7 +44,7 @@ class TestJWTAuthentication(AuthenticationTestCaseMixin, TestCase):
     def test_using_valid_jwt(self):
         auth = 'JWT ' + make_id_token(self.username)
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
-        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.status_code, 200, resp.content.decode())
         self.assertEqual(resp.content.decode(), 'a')
 
     def test_using_valid_jwt_and_local_issuer(self):

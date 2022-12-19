@@ -1,4 +1,4 @@
-from oidc_auth.test import PUBLIC_KEY
+from oidc_auth.test import PEM_PUBLIC_KEY
 SECRET_KEY = 'secret'
 DATABASES = {
     'default': {
@@ -12,11 +12,6 @@ REST_FRAMEWORK = {
 ROOT_URLCONF = 'tests.test_authentication'
 
 OIDC_AUTH = {
-    'OIDC_CLAIMS_OPTIONS': {
-        'nbf': {
-            'essential': True,
-        }
-    },
     'ISSUERS': {
         'http://example.com': {
             'type': "JWKS",
@@ -25,7 +20,7 @@ OIDC_AUTH = {
         },
         'local': {
             'type': "PEM",
-            'key': PUBLIC_KEY,
+            'key': PEM_PUBLIC_KEY,
             'aud': 'local_aud',
         }
     },

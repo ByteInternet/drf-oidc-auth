@@ -1,5 +1,4 @@
 import logging
-from requests import request as web_request
 
 import jwt
 from jwt import PyJWKClient
@@ -10,7 +9,7 @@ from rest_framework.authentication import (BaseAuthentication,
 from rest_framework.exceptions import AuthenticationFailed
 
 from .settings import api_settings
-from .decode_key import PEMDecodeKey, JWKSDecodeKey
+from .util import cache
 
 logger = logging.getLogger(__name__)
 
@@ -26,10 +25,6 @@ class JSONWebTokenAuthentication(BaseAuthentication):
     """Token based authentication using the JSON Web Token standard"""
 
     www_authenticate_realm = 'api'
-    ISSUER_TYPES = {
-        'JWKS': JWKSDecodeKey,
-        'PEM': PEMDecodeKey,
-    }
     REQUIRED_CLAIMS = ["exp", "nbf", "aud", "iss"]
     SUPPORTED_ALGORITHMS = ["RS256", "RS384", "RS512"]
 
@@ -37,14 +32,9 @@ class JSONWebTokenAuthentication(BaseAuthentication):
         jwt_value = self.get_jwt_value(request)
         if jwt_value is None:
             return None
-
-        web_request("GET", "http://www.vg.no")
         payload = self.decode_pyjwt(jwt_value)
-
         user = api_settings.OIDC_RESOLVE_USER_FUNCTION(request, payload)
-
         return user, JWTToken(payload)
-
 
     def get_jwt_value(self, request):
         auth = get_authorization_header(request).split()
@@ -80,28 +70,34 @@ class JSONWebTokenAuthentication(BaseAuthentication):
         return issuer
 
     def get_key_for_issuer(self, token, target_issuer):
-        logger.error("GET KEY FOR ISSUER")
         issuer = self.get_issuer_config(target_issuer)
         type = issuer['type']
         if type == "JWKS":
-            logger.error("START OF JWKS")
-            jwks_client = PyJWKClient(issuer['key'])
-            signing_key = jwks_client.get_signing_key_from_jwt(token)
-            key = signing_key.key
-            logger.error(f"END OF JWKS, key: {key}")
-        else:
+            kid = self.get_kid(token)
+            key = self.get_jwks_key(issuer['key'], kid)
+        elif type == "PEM":
             key = issuer['key']
+        else:
+            raise ValueError(f"{type} is not a valid type")
         return key
-        #key_class = self.ISSUER_TYPES[type]
-        #key = key_class(token, issuer['key'])
-        #return key.key
+
+    @cache(ttl=api_settings.OIDC_JWKS_EXPIRATION_TIME)
+    def get_jwks_key(self, jwks_endpoint, kid):
+        jwks_client = PyJWKClient(jwks_endpoint)
+        signing_key = jwks_client.get_signing_key(kid)
+        return signing_key.key
 
     def get_allowed_aud_for_issuer(self, target_issuer):
         issuer = self.get_issuer_config(target_issuer)
         return issuer['aud']
 
-    def authenticate_header(self, request):
-        return 'JWT realm="{0}"'.format(self.www_authenticate_realm)
+    def get_kid(self, token):
+        """Gets the kid value from the header of a raw token"""
+        header = jwt.get_unverified_header(token)
+        kid = header.get("kid")
+        if not kid:
+            raise AuthenticationFailed("Token must include the 'kid' header")
+        return kid
 
     def decode_pyjwt(self, jwt_value):
         """Validates a raw token and returns a decoded token if validation is successful"""
@@ -124,6 +120,7 @@ class JSONWebTokenAuthentication(BaseAuthentication):
         except jwt.exceptions.DecodeError as e:
             raise AuthenticationFailed("Error decoding token: invalid format")
         except jwt.exceptions.PyJWTError as e:
-            logger.error(e)
-            logger.error(type(e))
             raise AuthenticationFailed(f"Error validating token: {e}")
+
+    def authenticate_header(self, request):
+        return 'JWT realm="{0}"'.format(self.www_authenticate_realm)

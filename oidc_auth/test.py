@@ -1,7 +1,7 @@
 import json
 import logging
 from requests.models import Response
-from authlib.jose import JsonWebToken, KeySet, RSAKey
+from authlib.jose import JsonWebToken, RSAKey
 import jwt as pyjwt
 try:
     from unittest.mock import patch, Mock
@@ -9,17 +9,22 @@ except ImportError:
     from mock import patch, Mock
 from cryptography.hazmat.primitives import serialization as crypto_serialization
 
+jwt = JsonWebToken(["RS256", "RS384", "RS512"])
+
 logger = logging.getLogger(__name__)
 
 jwk_key = RSAKey.generate_key(is_private=True)
 pem_key = RSAKey.generate_key(is_private=True)
-PUBLIC_KEY = pem_key.get_public_key().public_bytes(
-    encoding=crypto_serialization.Encoding.PEM,
-    format= crypto_serialization.PublicFormat.SubjectPublicKeyInfo,
-).decode("utf-8")
 
-jwt = JsonWebToken(['RS256', 'RS512'])
+def get_public_key(key):
+    """Returns public key for a RSAKey object"""
+    public_key = key.get_public_key().public_bytes(
+        encoding=crypto_serialization.Encoding.PEM,
+        format= crypto_serialization.PublicFormat.SubjectPublicKeyInfo,
+    ).decode("utf-8")
+    return public_key
 
+PEM_PUBLIC_KEY = get_public_key(pem_key)
 
 def make_id_token(sub="user",
                   iss='http://example.com',
@@ -53,14 +58,9 @@ def make_local_token():
 def make_remote_token():
     return make_id_token()
 
-
 def make_jwt(payload, headers, key):
-    jwt = JsonWebToken(['RS256'])
     jws = jwt.encode(headers, payload, key=key)
     return jws
-
-def make_jwt_without_kid():
-    pass
 
 class FakeRequests(object):
     def __init__(self):
@@ -82,20 +82,13 @@ class FakeRequests(object):
 
         return response
 
-
 class AuthenticationTestCaseMixin(object):
     username = 'henk'
 
-
-    def get_signing_key_from_jwt_mock(self, token):
-        header = pyjwt.get_unverified_header(token)
-        kid = header.get("kid")
+    def get_signing_key_mock(self, kid):
         if kid != jwk_key.as_dict(add_kid=True).get('kid'):
             raise pyjwt.exceptions.PyJWKClientError("Invalid Kid")
-        key = jwk_key.get_public_key().public_bytes(
-            encoding=crypto_serialization.Encoding.PEM,
-            format=crypto_serialization.PublicFormat.SubjectPublicKeyInfo,
-        ).decode("utf-8")
+        key = get_public_key(jwk_key)
         return Mock(key=key)
 
     def patch(self, thing_to_mock, **kwargs):
@@ -105,23 +98,9 @@ class AuthenticationTestCaseMixin(object):
         return patched
 
     def setUp(self):
-        keys = KeySet(keys=[jwk_key])
-        self.patch(
-            'oidc_auth.decode_key.request',
-            return_value=Mock(
-                status_code=200,
-                json=keys.as_dict
-            )
-        )
-        self.patch(
-            'oidc_auth.decode_key.PyJWKClient',
-            return_value=Mock(
-                get_signing_key_from_jwt=self.get_signing_key_from_jwt_mock,
-            )
-        )
         self.patch(
             'oidc_auth.authentication.PyJWKClient',
             return_value=Mock(
-                get_signing_key_from_jwt=self.get_signing_key_from_jwt_mock,
+                get_signing_key=self.get_signing_key_mock,
             )
         )
