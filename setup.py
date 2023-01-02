@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='drf-oidc-auth',
-    version='3.0.0',
+    version='4.0.0',
     packages=['oidc_auth'],
     url='https://github.com/Uninett/drf-oidc-auth',
     license='MIT',
