@@ -1,8 +1,8 @@
 from setuptools import setup
 
 setup(
-    name='drf-oidc-auth',
-    version='3.0.0',
+    name='drf-oidc-auth-sikt',
+    version='1.0.0',
     packages=['oidc_auth'],
     url='https://github.com/Uninett/drf-oidc-auth',
     license='MIT',
