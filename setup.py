@@ -14,7 +14,8 @@ setup(
         'cryptography>=2.6',
         'django>=2.2.0',
         'djangorestframework>=3.11.0',
-        'requests>=2.20.0'
+        'requests>=2.20.0',
+        'pyjwt>=2.6.0',
     ],
     classifiers=[
         'Development Status :: 4 - Beta',
