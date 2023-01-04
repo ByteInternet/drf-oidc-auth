@@ -56,11 +56,7 @@ OIDC_AUTH = {
     # based on username (natural key) taken from the 'sub'-claim of the
     # id_token.
     'OIDC_RESOLVE_USER_FUNCTION': 'oidc_auth.authentication.get_user_by_id',
-    
-    # (Optional) Number of seconds in the past valid tokens can be 
-    # issued (default 600)
-    'OIDC_LEEWAY': 600,
-    
+
     # (Optional) Time before signing keys will be refreshed (default 24 hrs)
     'OIDC_JWKS_EXPIRATION_TIME': 24*60*60,
 

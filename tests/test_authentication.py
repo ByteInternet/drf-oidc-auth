@@ -165,11 +165,6 @@ class TestJWTAuthentication(AuthenticationTestCaseMixin, TestCase):
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 401)
 
-    def test_with_old_jwt(self):
-        auth = 'JWT ' + make_id_token(self.user.username, iat=13151351)
-        resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
-        self.assertEqual(resp.status_code, 401)
-
     def test_with_invalid_issuer(self):
         auth = 'JWT ' + \
                make_id_token(self.user.username, iss='http://something.com')
