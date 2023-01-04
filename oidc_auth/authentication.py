@@ -100,7 +100,10 @@ class JSONWebTokenAuthentication(BaseAuthentication):
             'iss': {
                 'essential': True,
                 'values': [issuer]
-            }
+            },
+            'nbf': {
+                'essential': True,
+            },
         }
         issuer_config = self.get_issuer_config(issuer)
         issuer_options = issuer_config['OIDC_CLAIMS_OPTIONS']
