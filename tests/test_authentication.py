@@ -8,7 +8,7 @@ from oidc_auth.authentication import (BearerTokenAuthentication,
                                       JSONWebTokenAuthentication,
                                       JWTToken,
                                       UserInfo,)
-from oidc_auth.test import AuthenticationTestCaseMixin, make_id_token
+from oidc_auth.test import AuthenticationTestCaseMixin, make_id_token, make_local_token
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.permissions import BasePermission
 from rest_framework.views import APIView
@@ -144,7 +144,7 @@ class TestJWTAuthentication(AuthenticationTestCaseMixin, TestCase):
     urls = __name__
 
     def test_using_valid_jwt(self):
-        auth = 'JWT ' + make_id_token(self.username)
+        auth = 'JWT ' + make_id_token()
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 200, resp.content)
         self.assertEqual(resp.content.decode(), 'a', resp.content)
@@ -164,44 +164,44 @@ class TestJWTAuthentication(AuthenticationTestCaseMixin, TestCase):
         self.assertEqual(resp.status_code, 401, resp.content)
 
     def test_with_expired_jwt(self):
-        auth = 'JWT ' + make_id_token(self.username, exp=13151351)
+        auth = 'JWT ' + make_id_token(exp=13151351)
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 401, resp.content)
 
     def test_with_invalid_issuer(self):
         auth = 'JWT ' + \
-               make_id_token(self.username, iss='http://something.com')
+               make_id_token(iss='http://something.com')
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 401, resp.content)
 
     def test_with_invalid_audience(self):
-        auth = 'JWT ' + make_id_token(self.username, aud='somebody')
+        auth = 'JWT ' + make_id_token(aud='somebody')
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 401, resp.content)
 
     def test_with_too_new_jwt(self):
-        auth = 'JWT ' + make_id_token(self.username, nbf=999999999999)
+        auth = 'JWT ' + make_id_token(nbf=999999999999)
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 401, resp.content)
 
     def test_with_multiple_audiences(self):
-        auth = 'JWT ' + make_id_token(self.username, aud=['you', 'me'])
+        auth = 'JWT ' + make_id_token(aud=['you', 'me'])
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 200, resp.content)
 
     def test_with_invalid_multiple_audiences(self):
-        auth = 'JWT ' + make_id_token(self.username, aud=['we', 'me'])
+        auth = 'JWT ' + make_id_token(aud=['we', 'me'])
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 401, resp.content)
 
     def test_with_multiple_audiences_and_authorized_party(self):
         auth = 'JWT ' + \
-               make_id_token(self.username, aud=['you', 'me'], azp='you')
+               make_id_token(aud=['you', 'me'], azp='you')
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 200, resp.content)
 
     def test_with_invalid_signature(self):
-        auth = 'JWT ' + make_id_token(self.username)
+        auth = 'JWT ' + make_id_token()
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth + 'x')
         self.assertEqual(resp.status_code, 401, resp.content)
 
@@ -211,7 +211,7 @@ class TestJWTAuthentication(AuthenticationTestCaseMixin, TestCase):
         self,
         logger_mock, decode
     ):
-        auth = 'JWT ' + make_id_token(self.username)
+        auth = 'JWT ' + make_id_token()
         decode.side_effect = DecodeError, BadSignatureError
 
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
@@ -221,26 +221,32 @@ class TestJWTAuthentication(AuthenticationTestCaseMixin, TestCase):
             'Invalid Authorization header. JWT Signature verification failed.')
 
     def test_should_fail_without_aud_claim(self):
-        auth = 'JWT ' + make_id_token(self.username, aud=None)
+        auth = 'JWT ' + make_id_token(aud=None)
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 401, resp.content)
 
     def test_should_fail_without_iss_claim(self):
-        auth = 'JWT ' + make_id_token(self.username, iss=None)
+        auth = 'JWT ' + make_id_token(iss=None)
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 401, resp.content)
 
     def test_should_fail_without_exp_claim(self):
-        auth = 'JWT ' + make_id_token(self.username, exp=None)
+        auth = 'JWT ' + make_id_token(exp=None)
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 401, resp.content)
 
     def test_should_fail_without_nbf_claim(self):
-        auth = 'JWT ' + make_id_token(self.username, nbf=None)
+        auth = 'JWT ' + make_id_token(nbf=None)
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 401, resp.content)
 
     def test_should_fail_without_iat_kid(self):
-        auth = 'JWT ' + make_id_token(self.username, iat=None)
+        auth = 'JWT ' + make_id_token(iat=None)
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 401, resp.content)
+
+    def test_using_valid_jwt_and_local_issuer(self):
+        auth = 'JWT ' + make_local_token()
+        resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertEqual(resp.content.decode(), 'a')

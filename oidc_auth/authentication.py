@@ -2,7 +2,7 @@ import logging
 import time
 
 import requests
-from authlib.jose import JsonWebKey, jwt
+from authlib.jose import JsonWebKey, JsonWebToken
 from authlib.jose.errors import (BadSignatureError, DecodeError,
                                  ExpiredTokenError, JoseError)
 from authlib.oidc.core.claims import IDToken
@@ -21,6 +21,7 @@ from .util import cache
 
 logger = logging.getLogger(__name__)
 
+jwt = JsonWebToken(['RS256', 'RS384', 'RS512'])
 
 def get_user_none(request, id_token):
     return None
@@ -187,8 +188,14 @@ class JSONWebTokenAuthentication(BaseAuthentication):
 
     def get_key_for_issuer(self, issuer):
         issuer_config = self.get_issuer_config(issuer)
-        oidc_endpoint = issuer_config['OIDC_ENDPOINT']
-        key = self.jwks(oidc_endpoint)
+        key = issuer_config['key']
+        key_type = issuer_config['type']
+        if key_type not in ['OIDC', 'PEM']:
+            raise ValueError(f"{key_type} is not a valid type")
+        if key_type == 'OIDC':
+            key = self.jwks(key)
+        elif key_type == 'PEM':
+            key = bytes(key, encoding='utf-8')
         return key
 
     def get_issuer_from_raw_token(self, token):

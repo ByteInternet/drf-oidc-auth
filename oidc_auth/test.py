@@ -5,16 +5,30 @@ try:
     from unittest.mock import patch, Mock
 except ImportError:
     from mock import patch, Mock
+from cryptography.hazmat.primitives import serialization as crypto_serialization
 
-key = RSAKey.generate_key(is_private=True)
+jwt = JsonWebToken(['RS256', 'RS384', 'RS512'])
 
+jwk_key = RSAKey.generate_key(is_private=True)
+pem_key = RSAKey.generate_key(is_private=True)
 
-def make_id_token(sub,
+def get_public_key(key):
+    """Returns public key for a RSAKey object"""
+    public_key = key.get_public_key().public_bytes(
+        encoding=crypto_serialization.Encoding.PEM,
+        format= crypto_serialization.PublicFormat.SubjectPublicKeyInfo,
+    ).decode("utf-8")
+    return public_key
+
+PEM_PUBLIC_KEY = get_public_key(pem_key)
+
+def make_id_token(sub="username",
                   iss='http://example.com',
                   aud='you',
                   exp=999999999999,  # tests will start failing in September 33658
                   iat=999999999999,
                   nbf=13151351,
+                  key=jwk_key,
                   **kwargs):
     payload = dict(
             iss=iss,
@@ -27,11 +41,13 @@ def make_id_token(sub,
         )
     # remove keys with empty values
     clean_payload = dict((k, v) for k, v in payload.items() if v)
-    return make_jwt(clean_payload).decode('ascii')
+    return make_jwt(clean_payload, key).decode('ascii')
 
 
-def make_jwt(payload):
-    jwt = JsonWebToken(['RS256'])
+def make_local_token():
+    return make_id_token(iss="local", key=pem_key, aud="local_aud")
+
+def make_jwt(payload, key):
     jws = jwt.encode(
         {'alg': 'RS256', 'kid': key.as_dict(add_kid=True).get('kid')}, payload, key=key)
     return jws
@@ -75,7 +91,7 @@ class AuthenticationTestCaseMixin(object):
                                      "userinfo_endpoint": "http://example.com/userinfo"})
         self.mock_get = self.patch('requests.get')
         self.mock_get.side_effect = self.responder.get
-        keys = KeySet(keys=[key])
+        keys = KeySet(keys=[jwk_key])
         self.patch(
             'oidc_auth.authentication.request',
             return_value=Mock(
