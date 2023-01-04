@@ -20,16 +20,17 @@ Configure authentication for Django REST Framework in settings.py:
 
 ```py
 REST_FRAMEWORK = {
-    'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticated',
-    ),
     'DEFAULT_AUTHENTICATION_CLASSES': (
         # ...
         'oidc_auth.authentication.JSONWebTokenAuthentication',
         'oidc_auth.authentication.BearerTokenAuthentication',
     ),
+    'UNAUTHENTICATED_USER': None,
 }
 ```
+
+These can also be set manually for the API view, it does not have to be
+registered as the default authentication classes.
 
 And configure the module itself in settings.py:
 ```py
@@ -55,7 +56,7 @@ OIDC_AUTH = {
     # return a User object. The default implementation tries to find the user
     # based on username (natural key) taken from the 'sub'-claim of the
     # id_token.
-    'OIDC_RESOLVE_USER_FUNCTION': 'oidc_auth.authentication.get_user_by_id',
+    'OIDC_RESOLVE_USER_FUNCTION': 'oidc_auth.authentication.get_user_none',
 
     # (Optional) Time before signing keys will be refreshed (default 24 hrs)
     'OIDC_JWKS_EXPIRATION_TIME': 24*60*60,
@@ -77,6 +78,42 @@ OIDC_AUTH = {
 }
 ```
 
+## User authentication
+
+By default, this plugin does not authenticate a user. As long as the token itself is validated succesfully,
+it will be a success. This will cause problems if your permission classes require a user to be authenticated,
+or your API in general requires a User to be authenticated. In order to authenticate a user, a custom
+function can be defined in the
+`OIDC_RESOLVE_USER_FUNCTION` setting. An example can look like this:
+
+```
+from django.contrib.auth import get_user_model
+from rest_framework.exceptions import AuthenticationFailed
+
+def get_user_by_id(request, id_token)
+    User = get_user_model()
+    try:
+        user = User.objects.get(username=id_token.get('sub'))
+    except User.DoesNotExist:
+        msg = _('Invalid Authorization header. User not found.')
+        raise AuthenticationFailed(msg)
+    return user
+
+```
+
+This will authenticate as the user with a username matching the `sub` claim in the token. If no such user
+exists, the authentication fails. Using the Django user models will require the `django.contrib.auth`
+and`django.contrib.contenttypes` apps to be configured in the django `settings.py` file like so:
+
+```
+INSTALLED_APPS = (
+    #  ...
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+)
+```
+
+
 # Running tests
 
 ```sh
@@ -95,7 +132,7 @@ from django.test import TestCase
 class MyTestCase(AuthenticationTestCaseMixin, TestCase):
     def test_example_cache_of_valid_bearer_token(self):
         self.responder.set_response(
-            'http://example.com/userinfo', {'sub': self.user.username})
+            'http://example.com/userinfo', {'sub': self.username})
         auth = 'Bearer egergerg'
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 200)
