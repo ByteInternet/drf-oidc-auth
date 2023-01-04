@@ -5,10 +5,9 @@ DATABASES = {
         'NAME': ':memory:'
     }
 }
-INSTALLED_APPS = (
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-)
+REST_FRAMEWORK = {
+    'UNAUTHENTICATED_USER': None,
+}
 ROOT_URLCONF = 'tests.test_authentication'
 OIDC_AUTH = {
     'OIDC_ENDPOINT': 'http://example.com',

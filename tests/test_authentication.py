@@ -5,10 +5,12 @@ from django.http import HttpResponse
 from django.test import TestCase
 from django.urls import re_path as url
 from oidc_auth.authentication import (BearerTokenAuthentication,
-                                      JSONWebTokenAuthentication)
+                                      JSONWebTokenAuthentication,
+                                      JWTToken,
+                                      UserInfo,)
 from oidc_auth.test import AuthenticationTestCaseMixin, make_id_token
 from rest_framework.exceptions import AuthenticationFailed
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import BasePermission
 from rest_framework.views import APIView
 
 if sys.version_info > (3,):
@@ -23,8 +25,19 @@ except ImportError:
     from mock import Mock, PropertyMock, patch
 
 
+class TokenPermission(BasePermission):
+    """Checks if the token has correct permissions"""
+
+    def has_permission(self, request, _view):
+        token = request.auth  # type: JWTToken
+        if not token:
+            return False
+        if not isinstance(token, JWTToken) and not isinstance(token, UserInfo):
+            return False
+        return True
+
 class MockView(APIView):
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (TokenPermission,)
     authentication_classes = (
         JSONWebTokenAuthentication,
         BearerTokenAuthentication
@@ -63,7 +76,7 @@ class TestBearerAuthentication(AuthenticationTestCaseMixin, TestCase):
 
     def test_using_valid_bearer_token(self):
         self.responder.set_response(
-            'http://example.com/userinfo', {'sub': self.user.username})
+            'http://example.com/userinfo', {'sub': self.username})
         auth = 'Bearer abcdefg'
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.content.decode(), 'a')
@@ -73,7 +86,7 @@ class TestBearerAuthentication(AuthenticationTestCaseMixin, TestCase):
 
     def test_cache_of_valid_bearer_token(self):
         self.responder.set_response(
-            'http://example.com/userinfo', {'sub': self.user.username})
+            'http://example.com/userinfo', {'sub': self.username})
         auth = 'Bearer egergerg'
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 200)
@@ -97,7 +110,7 @@ class TestBearerAuthentication(AuthenticationTestCaseMixin, TestCase):
 
         # Token becomes valid
         self.responder.set_response(
-            'http://example.com/userinfo', {'sub': self.user.username})
+            'http://example.com/userinfo', {'sub': self.username})
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 200)
 
@@ -141,7 +154,7 @@ class TestJWTAuthentication(AuthenticationTestCaseMixin, TestCase):
     urls = __name__
 
     def test_using_valid_jwt(self):
-        auth = 'JWT ' + make_id_token(self.user.username)
+        auth = 'JWT ' + make_id_token(self.username)
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.content.decode(), 'a')
@@ -161,49 +174,44 @@ class TestJWTAuthentication(AuthenticationTestCaseMixin, TestCase):
         self.assertEqual(resp.status_code, 401)
 
     def test_with_expired_jwt(self):
-        auth = 'JWT ' + make_id_token(self.user.username, exp=13151351)
+        auth = 'JWT ' + make_id_token(self.username, exp=13151351)
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 401)
 
     def test_with_invalid_issuer(self):
         auth = 'JWT ' + \
-               make_id_token(self.user.username, iss='http://something.com')
+               make_id_token(self.username, iss='http://something.com')
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 401)
 
     def test_with_invalid_audience(self):
-        auth = 'JWT ' + make_id_token(self.user.username, aud='somebody')
+        auth = 'JWT ' + make_id_token(self.username, aud='somebody')
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 401)
 
     def test_with_too_new_jwt(self):
-        auth = 'JWT ' + make_id_token(self.user.username, nbf=999999999999)
-        resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
-        self.assertEqual(resp.status_code, 401)
-
-    def test_with_unknown_subject(self):
-        auth = 'JWT ' + make_id_token(self.user.username + 'x')
+        auth = 'JWT ' + make_id_token(self.username, nbf=999999999999)
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 401)
 
     def test_with_multiple_audiences(self):
-        auth = 'JWT ' + make_id_token(self.user.username, aud=['you', 'me'])
+        auth = 'JWT ' + make_id_token(self.username, aud=['you', 'me'])
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 200)
 
     def test_with_invalid_multiple_audiences(self):
-        auth = 'JWT ' + make_id_token(self.user.username, aud=['we', 'me'])
+        auth = 'JWT ' + make_id_token(self.username, aud=['we', 'me'])
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 401)
 
     def test_with_multiple_audiences_and_authorized_party(self):
         auth = 'JWT ' + \
-               make_id_token(self.user.username, aud=['you', 'me'], azp='you')
+               make_id_token(self.username, aud=['you', 'me'], azp='you')
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 200)
 
     def test_with_invalid_signature(self):
-        auth = 'JWT ' + make_id_token(self.user.username)
+        auth = 'JWT ' + make_id_token(self.username)
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth + 'x')
         self.assertEqual(resp.status_code, 401)
 
@@ -213,7 +221,7 @@ class TestJWTAuthentication(AuthenticationTestCaseMixin, TestCase):
         self,
         logger_mock, decode
     ):
-        auth = 'JWT ' + make_id_token(self.user.username)
+        auth = 'JWT ' + make_id_token(self.username)
         decode.side_effect = DecodeError, BadSignatureError
 
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)

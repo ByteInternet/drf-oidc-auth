@@ -7,7 +7,6 @@ from authlib.jose.errors import (BadSignatureError, DecodeError,
                                  ExpiredTokenError, JoseError)
 from authlib.oidc.core.claims import IDToken
 from authlib.oidc.discovery import get_well_known_url
-from django.contrib.auth import get_user_model
 from django.utils.encoding import smart_str
 from django.utils.functional import cached_property
 from django.utils.translation import gettext as _
@@ -24,14 +23,8 @@ logging.basicConfig()
 logger = logging.getLogger(__name__)
 
 
-def get_user_by_id(request, id_token):
-    User = get_user_model()
-    try:
-        user = User.objects.get_by_natural_key(id_token.get('sub'))
-    except User.DoesNotExist:
-        msg = _('Invalid Authorization header. User not found.')
-        raise AuthenticationFailed(msg)
-    return user
+def get_user_none(request, id_token):
+    return None
 
 
 class BaseOidcAuthentication(BaseAuthentication):
@@ -45,6 +38,9 @@ class BaseOidcAuthentication(BaseAuthentication):
             )
         ).json()
 
+class UserInfo(dict):
+    """Wrapper class to allow checks to see if the object is a JWT token"""
+    pass
 
 class BearerTokenAuthentication(BaseOidcAuthentication):
     www_authenticate_realm = 'api'
@@ -62,7 +58,7 @@ class BearerTokenAuthentication(BaseOidcAuthentication):
 
         user = api_settings.OIDC_RESOLVE_USER_FUNCTION(request, userinfo)
 
-        return user, userinfo
+        return user, UserInfo(userinfo)
 
     def get_bearer_token(self, request):
         auth = get_authorization_header(request).split()
@@ -94,6 +90,10 @@ class BearerTokenAuthentication(BaseOidcAuthentication):
         return response.json()
 
 
+class JWTToken(dict):
+    """Wrapper class to allow checks to see if the object is a JWT token"""
+    pass
+
 class JSONWebTokenAuthentication(BaseOidcAuthentication):
     """Token based authentication using the JSON Web Token standard"""
 
@@ -120,7 +120,7 @@ class JSONWebTokenAuthentication(BaseOidcAuthentication):
 
         user = api_settings.OIDC_RESOLVE_USER_FUNCTION(request, payload)
 
-        return user, payload
+        return user, JWTToken(payload)
 
     def get_jwt_value(self, request):
         auth = get_authorization_header(request).split()
