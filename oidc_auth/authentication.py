@@ -34,21 +34,6 @@ def get_user_by_id(request, id_token):
     return user
 
 
-class DRFIDToken(IDToken):
-
-    def validate_exp(self, now, leeway):
-        super(DRFIDToken, self).validate_exp(now, leeway)
-        if now > self['exp']:
-            msg = _('Invalid Authorization header. JWT has expired.')
-            raise AuthenticationFailed(msg)
-
-    def validate_iat(self, now, leeway):
-        super(DRFIDToken, self).validate_iat(now, leeway)
-        if self['iat'] < leeway:
-            msg = _('Invalid Authorization header. JWT too old.')
-            raise AuthenticationFailed(msg)
-
-
 class BaseOidcAuthentication(BaseAuthentication):
     @property
     @cache(ttl=api_settings.OIDC_BEARER_TOKEN_EXPIRATION_TIME)
@@ -172,7 +157,7 @@ class JSONWebTokenAuthentication(BaseOidcAuthentication):
             id_token = jwt.decode(
                 jwt_value.decode('ascii'),
                 self.jwks(),
-                claims_cls=DRFIDToken,
+                claims_cls=IDToken,
                 claims_options=self.claims_options
             )
         except (BadSignatureError, DecodeError):
@@ -192,7 +177,6 @@ class JSONWebTokenAuthentication(BaseOidcAuthentication):
         try:
             id_token.validate(
                 now=int(time.time()),
-                leeway=int(time.time()-api_settings.OIDC_LEEWAY)
             )
         except ExpiredTokenError:
             msg = _('Invalid Authorization header. JWT has expired.')
