@@ -7,6 +7,8 @@ except ImportError:
     from mock import patch, Mock
 from cryptography.hazmat.primitives import serialization as crypto_serialization
 
+jwt = JsonWebToken(['RS256', 'RS384', 'RS512'])
+
 jwk_key = RSAKey.generate_key(is_private=True)
 pem_key = RSAKey.generate_key(is_private=True)
 
@@ -46,7 +48,6 @@ def make_local_token():
     return make_id_token(sub="username", iss="local", key=pem_key, aud="local_aud")
 
 def make_jwt(payload, key):
-    jwt = JsonWebToken(['RS256'])
     jws = jwt.encode(
         {'alg': 'RS256', 'kid': key.as_dict(add_kid=True).get('kid')}, payload, key=key)
     return jws
