@@ -1,5 +1,4 @@
 import json
-from django.contrib.auth import get_user_model
 from requests.models import Response
 from authlib.jose import JsonWebToken, KeySet, RSAKey
 try:
@@ -66,7 +65,6 @@ class AuthenticationTestCaseMixin(object):
         return patched
 
     def setUp(self):
-        self.user, _ = get_user_model().objects.get_or_create(username=self.username)
         self.responder = FakeRequests()
         self.responder.set_response("http://example.com/.well-known/openid-configuration",
                                     {"jwks_uri": "http://example.com/jwks",
