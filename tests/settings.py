@@ -10,11 +10,16 @@ REST_FRAMEWORK = {
 }
 ROOT_URLCONF = 'tests.test_authentication'
 OIDC_AUTH = {
-    'OIDC_ENDPOINT': 'http://example.com',
-    'OIDC_CLAIMS_OPTIONS': {
-        'aud': {
-            'values': ['you'],
-            'essential': True,
+    'USERINFO_ENDPOINT': "http://example.com/userinfo",
+    'JWT_ISSUERS': {
+        'http://example.com': {
+            'OIDC_ENDPOINT': 'http://example.com',
+            'OIDC_CLAIMS_OPTIONS': {
+                'aud': {
+                    'values': ['you'],
+                    'essential': True,
+                }
+            }
         }
-    },
+    }
 }

@@ -4,17 +4,15 @@ from rest_framework.settings import APISettings
 USER_SETTINGS = getattr(settings, 'OIDC_AUTH', None)
 
 DEFAULTS = {
-    'OIDC_ENDPOINT': None,
-
-    # Currently unimplemented
-    'OIDC_ENDPOINTS': [],
-
-    # The Claims Options can now be defined by a static string.
+    # Define multiple issuers, each with
+    # an `OIDC_ENDPOINT` and `OIDC_CLAIMS_OPTIONS` value.
+    # The key for each issuer in the dict will be the expected value for
+    # the 'iss' claim in tokens from that issuer.
+    # Configuration will be automatically done based on the discover
+    # document found at <OIDC_ENDPOINT>/.well-known/openid-configuration.
+    # The Claims Options can now be defined according to this documentation:
     # ref: https://docs.authlib.org/en/latest/jose/jwt.html#jwt-payload-claims-validation
-    'OIDC_CLAIMS_OPTIONS': {
-        'aud': {
-            'essential': True,
-        }
+    'JWT_ISSUERS': {
     },
 
     # Time before JWKS will be refreshed

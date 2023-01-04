@@ -35,21 +35,26 @@ registered as the default authentication classes.
 And configure the module itself in settings.py:
 ```py
 OIDC_AUTH = {
-    # Specify OpenID Connect endpoint. Configuration will be
-    # automatically done based on the discovery document found
-    # at <endpoint>/.well-known/openid-configuration
-    'OIDC_ENDPOINT': 'https://accounts.google.com',
-
-    # The Claims Options can now be defined by a static string.
+    # Define multiple issuers, each with
+    # an `OIDC_ENDPOINT` and `OIDC_CLAIMS_OPTIONS` value.
+    # The key for each issuer in the dict will be the expected value for
+    # the 'iss' claim in tokens from that issuer.
+    # Configuration will be automatically done based on the discover
+    # document found at <OIDC_ENDPOINT>/.well-known/openid-configuration.
+    # The Claims Options can now be defined according to this documentation:
     # ref: https://docs.authlib.org/en/latest/jose/jwt.html#jwt-payload-claims-validation
-    # The old OIDC_AUDIENCES option is removed in favor of this new option.
     # `aud` is only required, when you set it as an essential claim.
-    'OIDC_CLAIMS_OPTIONS': {
-        'aud': {
-            'values': ['myapp'],
-            'essential': True,
+    'JWT_ISSUERS': {
+        'https://google.com': {
+            'OIDC_ENDPOINT': 'https://accounts.google.com',
+            'OIDC_CLAIM_OPTIONS': {
+                'aud': {
+                    'values': ['myapp']
+                    'essential': True,
+                }
+            },
         }
-    },
+    }
 
     # (Optional) Function that resolves id_token into user.
     # This function receives a request and an id_token dict and expects to
