@@ -79,8 +79,8 @@ class TestBearerAuthentication(AuthenticationTestCaseMixin, TestCase):
             'http://example.com/userinfo', {'sub': self.username})
         auth = 'Bearer abcdefg'
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
-        self.assertEqual(resp.content.decode(), 'a')
-        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.content.decode(), 'a', resp.content)
+        self.assertEqual(resp.status_code, 200, resp.content)
         self.mock_get.assert_called_with(
             'http://example.com/userinfo', headers={'Authorization': auth})
 
@@ -89,46 +89,46 @@ class TestBearerAuthentication(AuthenticationTestCaseMixin, TestCase):
             'http://example.com/userinfo', {'sub': self.username})
         auth = 'Bearer egergerg'
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
-        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.status_code, 200, resp.content)
 
         # Token expires, but validity is cached
         self.responder.set_response('http://example.com/userinfo', "", 401)
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
-        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.status_code, 200, resp.content)
 
     def test_using_invalid_bearer_token(self):
         self.responder.set_response('http://example.com/userinfo', "", 401)
         auth = 'Bearer hjikasdf'
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
-        self.assertEqual(resp.status_code, 401)
+        self.assertEqual(resp.status_code, 401, resp.content)
 
     def test_cache_of_invalid_bearer_token(self):
         self.responder.set_response('http://example.com/userinfo', "", 401)
         auth = 'Bearer feegrgeregreg'
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
-        self.assertEqual(resp.status_code, 401)
+        self.assertEqual(resp.status_code, 401, resp.content)
 
         # Token becomes valid
         self.responder.set_response(
             'http://example.com/userinfo', {'sub': self.username})
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
-        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.status_code, 200, resp.content)
 
     def test_using_malformed_bearer_token(self):
         auth = 'Bearer abc def'
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
-        self.assertEqual(resp.status_code, 401)
+        self.assertEqual(resp.status_code, 401, resp.content)
 
     def test_using_missing_bearer_token(self):
         auth = 'Bearer'
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
-        self.assertEqual(resp.status_code, 401)
+        self.assertEqual(resp.status_code, 401, resp.content)
 
     def test_using_inaccessible_userinfo_endpoint(self):
         self.mock_get.side_effect = ConnectionError
         auth = 'Bearer'
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
-        self.assertEqual(resp.status_code, 401)
+        self.assertEqual(resp.status_code, 401, resp.content)
 
     def test_get_user_info_endpoint(self):
         authentication = BearerTokenAuthentication()
@@ -146,64 +146,64 @@ class TestJWTAuthentication(AuthenticationTestCaseMixin, TestCase):
     def test_using_valid_jwt(self):
         auth = 'JWT ' + make_id_token(self.username)
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
-        self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp.content.decode(), 'a')
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertEqual(resp.content.decode(), 'a', resp.content)
 
     def test_without_jwt(self):
         resp = self.client.get('/test/')
-        self.assertEqual(resp.status_code, 401)
+        self.assertEqual(resp.status_code, 401, resp.content)
 
     def test_with_invalid_jwt(self):
         auth = 'JWT e30='
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
-        self.assertEqual(resp.status_code, 401)
+        self.assertEqual(resp.status_code, 401, resp.content)
 
     def test_with_invalid_auth_header(self):
         auth = 'Bearer 12345'
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
-        self.assertEqual(resp.status_code, 401)
+        self.assertEqual(resp.status_code, 401, resp.content)
 
     def test_with_expired_jwt(self):
         auth = 'JWT ' + make_id_token(self.username, exp=13151351)
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
-        self.assertEqual(resp.status_code, 401)
+        self.assertEqual(resp.status_code, 401, resp.content)
 
     def test_with_invalid_issuer(self):
         auth = 'JWT ' + \
                make_id_token(self.username, iss='http://something.com')
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
-        self.assertEqual(resp.status_code, 401)
+        self.assertEqual(resp.status_code, 401, resp.content)
 
     def test_with_invalid_audience(self):
         auth = 'JWT ' + make_id_token(self.username, aud='somebody')
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
-        self.assertEqual(resp.status_code, 401)
+        self.assertEqual(resp.status_code, 401, resp.content)
 
     def test_with_too_new_jwt(self):
         auth = 'JWT ' + make_id_token(self.username, nbf=999999999999)
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
-        self.assertEqual(resp.status_code, 401)
+        self.assertEqual(resp.status_code, 401, resp.content)
 
     def test_with_multiple_audiences(self):
         auth = 'JWT ' + make_id_token(self.username, aud=['you', 'me'])
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
-        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.status_code, 200, resp.content)
 
     def test_with_invalid_multiple_audiences(self):
         auth = 'JWT ' + make_id_token(self.username, aud=['we', 'me'])
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
-        self.assertEqual(resp.status_code, 401)
+        self.assertEqual(resp.status_code, 401, resp.content)
 
     def test_with_multiple_audiences_and_authorized_party(self):
         auth = 'JWT ' + \
                make_id_token(self.username, aud=['you', 'me'], azp='you')
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
-        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.status_code, 200, resp.content)
 
     def test_with_invalid_signature(self):
         auth = 'JWT ' + make_id_token(self.username)
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth + 'x')
-        self.assertEqual(resp.status_code, 401)
+        self.assertEqual(resp.status_code, 401, resp.content)
 
     @patch('oidc_auth.authentication.jwt.decode')
     @patch('oidc_auth.authentication.logger')
@@ -216,6 +216,6 @@ class TestJWTAuthentication(AuthenticationTestCaseMixin, TestCase):
 
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
 
-        self.assertEqual(resp.status_code, 401)
+        self.assertEqual(resp.status_code, 401, resp.content)
         logger_mock.exception.assert_called_once_with(
             'Invalid Authorization header. JWT Signature verification failed.')
