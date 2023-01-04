@@ -219,3 +219,28 @@ class TestJWTAuthentication(AuthenticationTestCaseMixin, TestCase):
         self.assertEqual(resp.status_code, 401, resp.content)
         logger_mock.exception.assert_called_once_with(
             'Invalid Authorization header. JWT Signature verification failed.')
+
+    def test_should_fail_without_aud_claim(self):
+        auth = 'JWT ' + make_id_token(self.username, aud=None)
+        resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
+        self.assertEqual(resp.status_code, 401, resp.content)
+
+    def test_should_fail_without_iss_claim(self):
+        auth = 'JWT ' + make_id_token(self.username, iss=None)
+        resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
+        self.assertEqual(resp.status_code, 401, resp.content)
+
+    def test_should_fail_without_exp_claim(self):
+        auth = 'JWT ' + make_id_token(self.username, exp=None)
+        resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
+        self.assertEqual(resp.status_code, 401, resp.content)
+
+    def test_should_fail_without_nbf_claim(self):
+        auth = 'JWT ' + make_id_token(self.username, nbf=None)
+        resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
+        self.assertEqual(resp.status_code, 401, resp.content)
+
+    def test_should_fail_without_iat_kid(self):
+        auth = 'JWT ' + make_id_token(self.username, iat=None)
+        resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
+        self.assertEqual(resp.status_code, 401, resp.content)
