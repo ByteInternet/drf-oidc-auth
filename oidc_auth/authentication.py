@@ -25,23 +25,11 @@ logger = logging.getLogger(__name__)
 def get_user_none(request, id_token):
     return None
 
-
-class BaseOidcAuthentication(BaseAuthentication):
-    @property
-    @cache(ttl=api_settings.OIDC_BEARER_TOKEN_EXPIRATION_TIME)
-    def oidc_config(self):
-        return requests.get(
-            get_well_known_url(
-                api_settings.OIDC_ENDPOINT,
-                external=True
-            )
-        ).json()
-
 class UserInfo(dict):
     """Wrapper class to allow checks to see if the object is a JWT token"""
     pass
 
-class BearerTokenAuthentication(BaseOidcAuthentication):
+class BearerTokenAuthentication(BaseAuthentication):
     www_authenticate_realm = 'api'
 
     def authenticate(self, request):
@@ -77,7 +65,7 @@ class BearerTokenAuthentication(BaseOidcAuthentication):
 
     @cache(ttl=api_settings.OIDC_BEARER_TOKEN_EXPIRATION_TIME)
     def get_userinfo(self, token):
-        userinfo_endpoint = self.oidc_config.get('userinfo_endpoint', api_settings.USERINFO_ENDPOINT)
+        userinfo_endpoint = api_settings.USERINFO_ENDPOINT
         if not userinfo_endpoint:
             raise AuthenticationFailed(_('Invalid userinfo_endpoint URL. Did not find a URL from OpenID connect '
                                          'discovery metadata nor settings.OIDC_AUTH.USERINFO_ENDPOINT.'))
@@ -93,10 +81,20 @@ class JWTToken(dict):
     """Wrapper class to allow checks to see if the object is a JWT token"""
     pass
 
-class JSONWebTokenAuthentication(BaseOidcAuthentication):
+class JSONWebTokenAuthentication(BaseAuthentication):
     """Token based authentication using the JSON Web Token standard"""
 
     www_authenticate_realm = 'api'
+
+    @property
+    @cache(ttl=api_settings.OIDC_BEARER_TOKEN_EXPIRATION_TIME)
+    def oidc_config(self):
+        return requests.get(
+            get_well_known_url(
+                api_settings.OIDC_ENDPOINT,
+                external=True
+            )
+        ).json()
 
     @property
     def claims_options(self):

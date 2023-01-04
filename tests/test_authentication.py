@@ -131,23 +131,13 @@ class TestBearerAuthentication(AuthenticationTestCaseMixin, TestCase):
         self.assertEqual(resp.status_code, 401)
 
     def test_get_user_info_endpoint(self):
-        with patch('oidc_auth.authentication.BaseOidcAuthentication.oidc_config', new_callable=PropertyMock) as oidc_config_mock:
-            oidc_config_mock.return_value = self.openid_configuration
-            authentication = BearerTokenAuthentication()
-            response_mock = Mock(return_value=Mock(status_code=200,
-                                                   json=Mock(return_value={}),
-                                                   raise_for_status=Mock(return_value=None)))
-            with patch('oidc_auth.authentication.requests.get', response_mock):
-                result = authentication.get_userinfo(b'token')
-                assert result == {}
-
-    def test_get_user_info_endpoint_with_missing_field(self):
-        self.openid_configuration.pop('userinfo_endpoint')
-        with patch('oidc_auth.authentication.BaseOidcAuthentication.oidc_config', new_callable=PropertyMock) as oidc_config_mock:
-            oidc_config_mock.return_value = self.openid_configuration
-            authentication = BearerTokenAuthentication()
-            with self.assertRaisesMessage(AuthenticationFailed, 'userinfo_endpoint'):
-                authentication.get_userinfo(b'faketoken')
+        authentication = BearerTokenAuthentication()
+        response_mock = Mock(return_value=Mock(status_code=200,
+                                                json=Mock(return_value={}),
+                                                raise_for_status=Mock(return_value=None)))
+        with patch('oidc_auth.authentication.requests.get', response_mock):
+            result = authentication.get_userinfo(b'token')
+            assert result == {}
 
 
 class TestJWTAuthentication(AuthenticationTestCaseMixin, TestCase):

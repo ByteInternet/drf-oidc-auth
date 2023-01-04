@@ -17,4 +17,5 @@ OIDC_AUTH = {
             'essential': True,
         }
     },
+    'USERINFO_ENDPOINT': "http://example.com/userinfo",
 }
