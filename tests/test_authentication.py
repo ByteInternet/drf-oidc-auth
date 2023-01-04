@@ -8,7 +8,7 @@ from oidc_auth.authentication import (BearerTokenAuthentication,
                                       JSONWebTokenAuthentication,
                                       JWTToken,
                                       UserInfo,)
-from oidc_auth.test import AuthenticationTestCaseMixin, make_id_token
+from oidc_auth.test import AuthenticationTestCaseMixin, make_id_token, make_local_token
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.permissions import BasePermission
 from rest_framework.views import APIView
@@ -244,3 +244,9 @@ class TestJWTAuthentication(AuthenticationTestCaseMixin, TestCase):
         auth = 'JWT ' + make_id_token(self.username, iat=None)
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 401, resp.content)
+
+    def test_using_valid_jwt_and_local_issuer(self):
+        auth = 'JWT ' + make_local_token()
+        resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertEqual(resp.content.decode(), 'a')
