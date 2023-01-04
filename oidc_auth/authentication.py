@@ -2,7 +2,7 @@ import logging
 import time
 
 import requests
-from authlib.jose import JsonWebKey, jwt
+from authlib.jose import JsonWebKey, JsonWebToken
 from authlib.jose.errors import (BadSignatureError, DecodeError,
                                  ExpiredTokenError, JoseError)
 from authlib.oidc.core.claims import IDToken
@@ -21,6 +21,7 @@ from .util import cache
 
 logger = logging.getLogger(__name__)
 
+jwt = JsonWebToken(['RS256', 'RS384', 'RS512'])
 
 def get_user_none(request, id_token):
     return None
