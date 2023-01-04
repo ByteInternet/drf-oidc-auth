@@ -1,10 +1,10 @@
 # OpenID Connect authentication for Django Rest Framework
 
-This package contains an authentication mechanism for authenticating 
+This package contains an authentication mechanism for authenticating
 users of a REST API using tokens obtained from OpenID Connect.
 
-Currently, it only supports JWT and Bearer tokens. JWT tokens will be 
-validated against the public keys of an OpenID connect authorization 
+Currently, it only supports JWT and Bearer tokens. JWT tokens will be
+validated against the public keys of an OpenID connect authorization
 service. Bearer tokens are used to retrieve the OpenID UserInfo for a
 user to identify him.
 
@@ -49,7 +49,7 @@ OIDC_AUTH = {
             'essential': True,
         }
     },
-    
+
     # (Optional) Function that resolves id_token into user.
     # This function receives a request and an id_token dict and expects to
     # return a User object. The default implementation tries to find the user
@@ -62,10 +62,10 @@ OIDC_AUTH = {
 
     # (Optional) Time before bearer token validity is verified again (default 10 minutes)
     'OIDC_BEARER_TOKEN_EXPIRATION_TIME': 10*60,
-    
+
     # (Optional) Token prefix in JWT authorization header (default 'JWT')
     'JWT_AUTH_HEADER_PREFIX': 'JWT',
-    
+
     # (Optional) Token prefix in Bearer authorization header (default 'Bearer')
     'BEARER_AUTH_HEADER_PREFIX': 'Bearer',
 
@@ -86,7 +86,7 @@ tox
 
 ## Mocking authentication
 
-There's a `AuthenticationTestCaseMixin` provided in the `oidc_auth.test` module, which you 
+There's a `AuthenticationTestCaseMixin` provided in the `oidc_auth.test` module, which you
 can use for testing authentication like so:
 ```python
 from oidc_auth.test import AuthenticationTestCaseMixin
