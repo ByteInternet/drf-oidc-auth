@@ -22,7 +22,7 @@ def get_public_key(key):
 
 PEM_PUBLIC_KEY = get_public_key(pem_key)
 
-def make_id_token(sub,
+def make_id_token(sub="username",
                   iss='http://example.com',
                   aud='you',
                   exp=999999999999,  # tests will start failing in September 33658
@@ -45,7 +45,7 @@ def make_id_token(sub,
 
 
 def make_local_token():
-    return make_id_token(sub="username", iss="local", key=pem_key, aud="local_aud")
+    return make_id_token(iss="local", key=pem_key, aud="local_aud")
 
 def make_jwt(payload, key):
     jws = jwt.encode(
