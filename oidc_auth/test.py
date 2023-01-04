@@ -14,17 +14,20 @@ def make_id_token(sub,
                   aud='you',
                   exp=999999999999,  # tests will start failing in September 33658
                   iat=999999999999,
+                  nbf=13151351,
                   **kwargs):
-    return make_jwt(
-        dict(
+    payload = dict(
             iss=iss,
             aud=aud,
             exp=exp,
             iat=iat,
+            nbf=nbf,
             sub=str(sub),
             **kwargs
         )
-    ).decode('ascii')
+    # remove keys with empty values
+    clean_payload = dict((k, v) for k, v in payload.items() if v)
+    return make_jwt(clean_payload).decode('ascii')
 
 
 def make_jwt(payload):
