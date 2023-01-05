@@ -5,7 +5,7 @@ USER_SETTINGS = getattr(settings, 'OIDC_AUTH', None)
 
 DEFAULTS = {
     # Define multiple issuers in here, each with
-    # an `type`, `key` and `OIDC_CLAIMS_OPTIONS` value.
+    # a `type`, `key` and `claims_options` value.
     # The key for each issuer in the dict will be the expected value for
     # the 'iss' claim in tokens from that issuer.
     # The Claims Options can now be defined according to this documentation:

@@ -98,7 +98,7 @@ class JSONWebTokenAuthentication(BaseAuthentication):
             },
         }
         issuer_config = self.get_issuer_config(issuer)
-        issuer_options = issuer_config['OIDC_CLAIMS_OPTIONS']
+        issuer_options = issuer_config['claims_options']
         for key, value in issuer_options.items():
             _claims_options[key] = value
         return _claims_options
