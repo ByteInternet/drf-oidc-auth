@@ -41,8 +41,8 @@ OIDC_AUTH = {
     # the 'iss' claim in tokens from that issuer.
     # The Claims Options can now be defined according to this documentation:
     # ref: https://docs.authlib.org/en/latest/jose/jwt.html#jwt-payload-claims-validation
-    # `type` can be "PEM" or "OIDC". If "PEM", then `key` must be a public key
-    # in PEM format. if "OIDC`, then `key` must be a OIDC endpoint
+    # `type` can be "PEM" or "JWKS". If "PEM", then `key` must be a public key
+    # in PEM format. if "JWKS`, then `key` must be a JWKS endpoint
     # `aud` is only required, when you set it as an essential claim.
     'JWT_ISSUERS': {
         'https://google.com': {

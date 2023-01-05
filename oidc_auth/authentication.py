@@ -134,7 +134,7 @@ class JSONWebTokenAuthentication(BaseAuthentication):
     def jwks(self, jwks_uri):
         return JsonWebKey.import_key_set(self.jwks_data(jwks_uri))
 
-    @cache(ttl=api_settings.OIDC_JWKS_EXPIRATION_TIME)
+    @cache(ttl=api_settings.JWKS_EXPIRATION_TIME)
     def jwks_data(self, jwks_uri):
         r = request("GET", jwks_uri, allow_redirects=True)
         r.raise_for_status()
