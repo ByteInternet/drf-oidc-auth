@@ -14,7 +14,7 @@ OIDC_AUTH = {
     'USERINFO_ENDPOINT': "http://example.com/userinfo",
     'JWT_ISSUERS': {
         'http://example.com': {
-            'type': "OIDC",
+            'type': "JWKS",
             'key': 'http://example.com',
             'OIDC_CLAIMS_OPTIONS': {
                 'aud': {
