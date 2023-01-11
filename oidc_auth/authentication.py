@@ -5,8 +5,6 @@ import requests
 from authlib.jose import JsonWebKey, JsonWebToken
 from authlib.jose.errors import (BadSignatureError, DecodeError,
                                  ExpiredTokenError, JoseError)
-from authlib.oidc.core.claims import IDToken
-from authlib.oidc.discovery import get_well_known_url
 import jwt as pyjwt
 from django.utils.encoding import smart_str
 from django.utils.translation import gettext as _
@@ -96,6 +94,9 @@ class JSONWebTokenAuthentication(BaseAuthentication):
             'nbf': {
                 'essential': True,
             },
+            'exp': {
+                'essential': True,
+            },
         }
         issuer_config = self.get_issuer_config(issuer)
         issuer_options = issuer_config['claims_options']
@@ -147,8 +148,7 @@ class JSONWebTokenAuthentication(BaseAuthentication):
             id_token = jwt.decode(
                 jwt_value.decode('ascii'),
                 key,
-                claims_cls=IDToken,
-                claims_options=self.claims_options(issuer)
+                claims_options=self.claims_options(issuer),
             )
         except (BadSignatureError, DecodeError, pyjwt.exceptions.DecodeError):
             msg = _(

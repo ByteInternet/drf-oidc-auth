@@ -240,11 +240,6 @@ class TestJWTAuthentication(AuthenticationTestCaseMixin, TestCase):
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 401, resp.content)
 
-    def test_should_fail_without_iat_kid(self):
-        auth = 'JWT ' + make_id_token(iat=None)
-        resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
-        self.assertEqual(resp.status_code, 401, resp.content)
-
     def test_using_valid_jwt_and_local_issuer(self):
         auth = 'JWT ' + make_local_token()
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
