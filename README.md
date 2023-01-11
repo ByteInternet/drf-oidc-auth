@@ -59,9 +59,8 @@ OIDC_AUTH = {
 
     # (Optional) Function that resolves id_token into user.
     # This function receives a request and an id_token dict and expects to
-    # return a User object. The default implementation tries to find the user
-    # based on username (natural key) taken from the 'sub'-claim of the
-    # id_token.
+    # return a User object. The default implementation returns None.
+    # See  the User authentication section for more info.
     'OIDC_RESOLVE_USER_FUNCTION': 'oidc_auth.authentication.get_user_none',
 
     # (Optional) Time before signing keys will be refreshed (default 24 hrs)

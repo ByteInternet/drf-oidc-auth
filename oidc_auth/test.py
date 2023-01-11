@@ -36,7 +36,7 @@ def make_id_token(sub="username",
             exp=exp,
             iat=iat,
             nbf=nbf,
-            sub=str(sub),
+            sub=sub,
             **kwargs
         )
     # remove keys with empty values
