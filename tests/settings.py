@@ -14,9 +14,9 @@ OIDC_AUTH = {
     'USERINFO_ENDPOINT': "http://example.com/userinfo",
     'JWT_ISSUERS': {
         'http://example.com': {
-            'type': "OIDC",
+            'type': "JWKS",
             'key': 'http://example.com',
-            'OIDC_CLAIMS_OPTIONS': {
+            'claims_options': {
                 'aud': {
                     'values': ['you'],
                     'essential': True,
@@ -26,7 +26,7 @@ OIDC_AUTH = {
         'local': {
             'type': "PEM",
             'key': PEM_PUBLIC_KEY,
-            'OIDC_CLAIMS_OPTIONS': {
+            'claims_options': {
                 'aud': {
                     'values': ['local_aud'],
                     'essential': True,

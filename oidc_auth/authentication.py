@@ -87,15 +87,6 @@ class JSONWebTokenAuthentication(BaseAuthentication):
 
     www_authenticate_realm = 'api'
 
-    @cache(ttl=api_settings.OIDC_BEARER_TOKEN_EXPIRATION_TIME)
-    def oidc_config(self, oidc_endpoint):
-        return requests.get(
-            get_well_known_url(
-                oidc_endpoint,
-                external=True
-            )
-        ).json()
-
     def claims_options(self, issuer):
         _claims_options = {
             'iss': {
@@ -107,7 +98,7 @@ class JSONWebTokenAuthentication(BaseAuthentication):
             },
         }
         issuer_config = self.get_issuer_config(issuer)
-        issuer_options = issuer_config['OIDC_CLAIMS_OPTIONS']
+        issuer_options = issuer_config['claims_options']
         for key, value in issuer_options.items():
             _claims_options[key] = value
         return _claims_options
@@ -140,12 +131,10 @@ class JSONWebTokenAuthentication(BaseAuthentication):
 
         return auth[1]
 
-    def jwks(self, oidc_endpoint):
-        oidc_config = self.oidc_config(oidc_endpoint)
-        jwks_uri = oidc_config['jwks_uri']
+    def jwks(self, jwks_uri):
         return JsonWebKey.import_key_set(self.jwks_data(jwks_uri))
 
-    @cache(ttl=api_settings.OIDC_JWKS_EXPIRATION_TIME)
+    @cache(ttl=api_settings.JWKS_EXPIRATION_TIME)
     def jwks_data(self, jwks_uri):
         r = request("GET", jwks_uri, allow_redirects=True)
         r.raise_for_status()
@@ -190,9 +179,9 @@ class JSONWebTokenAuthentication(BaseAuthentication):
         issuer_config = self.get_issuer_config(issuer)
         key = issuer_config['key']
         key_type = issuer_config['type']
-        if key_type not in ['OIDC', 'PEM']:
+        if key_type not in ['JWKS', 'PEM']:
             raise ValueError(f"{key_type} is not a valid type")
-        if key_type == 'OIDC':
+        if key_type == 'JWKS':
             key = self.jwks(key)
         elif key_type == 'PEM':
             key = bytes(key, encoding='utf-8')
