@@ -250,3 +250,8 @@ class TestJWTAuthentication(AuthenticationTestCaseMixin, TestCase):
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 200, resp.content)
         self.assertEqual(resp.content.decode(), 'a')
+
+    def test_should_not_fail_without_sub_claim(self):
+        auth = 'JWT ' + make_id_token(sub=None)
+        resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
+        self.assertEqual(resp.status_code, 200, resp.content)
