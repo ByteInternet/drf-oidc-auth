@@ -29,6 +29,7 @@ def make_id_token(sub="username",
                   iat=13151351,
                   nbf=13151351,
                   key=jwk_key,
+                  kid=None,
                   **kwargs):
     payload = dict(
             iss=iss,
@@ -41,15 +42,17 @@ def make_id_token(sub="username",
         )
     # remove keys with empty values
     clean_payload = dict((k, v) for k, v in payload.items() if v)
-    return make_jwt(clean_payload, key).decode('ascii')
+    if kid is None:
+        kid = key.as_dict(add_kid=True).get('kid')
+    return make_jwt(clean_payload, key, kid).decode('ascii')
 
 
 def make_local_token():
     return make_id_token(iss="local", key=pem_key, aud="local_aud")
 
-def make_jwt(payload, key):
+def make_jwt(payload, key, kid):
     jws = jwt.encode(
-        {'alg': 'RS256', 'kid': key.as_dict(add_kid=True).get('kid')}, payload, key=key)
+        {'alg': 'RS256', 'kid': kid}, payload, key=key)
     return jws
 
 
