@@ -251,7 +251,7 @@ class TestJWTAuthentication(AuthenticationTestCaseMixin, TestCase):
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 200, resp.content)
 
-    def test_should_invalid_kid_should_give_401(self):
+    def test_invalid_kid_should_give_401(self):
         auth = 'JWT ' + make_id_token(kid="invalid kid")
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
         self.assertEqual(resp.status_code, 401, resp.content)
