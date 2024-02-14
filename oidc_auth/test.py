@@ -26,7 +26,7 @@ def make_id_token(sub="username",
                   iss='http://example.com',
                   aud='you',
                   exp=999999999999,  # tests will start failing in September 33658
-                  iat=999999999999,
+                  iat=13151351,
                   nbf=13151351,
                   key=jwk_key,
                   **kwargs):
