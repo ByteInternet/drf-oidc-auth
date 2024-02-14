@@ -43,7 +43,7 @@ def make_id_token(sub="username",
     # remove keys with empty values
     clean_payload = dict((k, v) for k, v in payload.items() if v)
     if kid is None:
-        kid = key.as_dict(add_kid=True).get('kid')
+        kid = key.as_dict().get('kid')
     return make_jwt(clean_payload, key, kid).decode('ascii')
 
 
