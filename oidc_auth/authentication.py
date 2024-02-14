@@ -150,7 +150,7 @@ class JSONWebTokenAuthentication(BaseAuthentication):
                 key,
                 claims_options=self.claims_options(issuer),
             )
-        except (BadSignatureError, DecodeError, pyjwt.exceptions.DecodeError):
+        except (BadSignatureError, DecodeError, pyjwt.exceptions.DecodeError, ValueError):
             msg = _(
                 'Invalid Authorization header. JWT Signature verification failed.')
             logger.exception(msg)
