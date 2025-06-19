@@ -12,8 +12,8 @@ setup(
     install_requires=[
         'authlib>=0.15.0',
         'cryptography>=2.6',
-        'django>=2.2.0',
-        'djangorestframework>=3.11.0',
+        'django>=4.2.0',
+        'djangorestframework>=3.12.0',
         'requests>=2.20.0',
         'pyjwt>=2.6.0',
     ],
