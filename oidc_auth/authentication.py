@@ -154,7 +154,7 @@ class JSONWebTokenAuthentication(BaseOidcAuthentication):
         try:
             token = jwt.decode(
                 jwt_value.decode('ascii'),
-                self.jwks(),
+                lambda header: self.jwks(),
                 algorithms=api_settings.JWT_ALGORITHMS
             )
         except UnsupportedAlgorithmError:
