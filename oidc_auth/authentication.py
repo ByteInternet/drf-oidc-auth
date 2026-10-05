@@ -1,3 +1,5 @@
+import base64
+import json
 import logging
 import time
 
@@ -167,7 +169,25 @@ class JSONWebTokenAuthentication(BaseOidcAuthentication):
     def issuer(self):
         return self.oidc_config['issuer']
 
+    def validate_jwt_header(self, jwt_value):
+        jwt_header = jwt_value.split(b'.')[0]
+        try:
+            padded_jwt_header = jwt_header + b'=' * (-len(jwt_header) % 4)
+            decoded_header = json.loads(base64.urlsafe_b64decode(padded_jwt_header))
+        except ValueError:
+            msg = _(
+                'Invalid Authorization header. Please provide base64 encoded ID Token'
+            )
+            raise AuthenticationFailed(msg)
+
+        if not isinstance(decoded_header, dict) or \
+                decoded_header.get('alg') not in api_settings.JWT_ALGORITHMS:
+            msg = _('Invalid Authorization header. JWT algorithm not allowed.')
+            logger.exception(msg)
+            raise AuthenticationFailed(msg)
+
     def decode_jwt(self, jwt_value):
+        self.validate_jwt_header(jwt_value)
         try:
             id_token = jwt.decode(
                 jwt_value.decode('ascii'),
@@ -178,6 +198,11 @@ class JSONWebTokenAuthentication(BaseOidcAuthentication):
         except (BadSignatureError, DecodeError):
             msg = _(
                 'Invalid Authorization header. JWT Signature verification failed.')
+            logger.exception(msg)
+            raise AuthenticationFailed(msg)
+        except ValueError:
+            msg = _(
+                'Invalid Authorization header. JWT signature key not found.')
             logger.exception(msg)
             raise AuthenticationFailed(msg)
         except AssertionError:
