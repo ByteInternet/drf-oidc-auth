@@ -1,4 +1,5 @@
 import json
+import time
 from django.contrib.auth import get_user_model
 from requests.models import Response
 from authlib.jose import JsonWebToken, KeySet, RSAKey
@@ -13,9 +14,13 @@ key = RSAKey.generate_key(is_private=True)
 def make_id_token(sub,
                   iss='http://example.com',
                   aud='you',
-                  exp=999999999999,  # tests will start failing in September 33658
-                  iat=999999999999,
+                  exp=None,
+                  iat=None,
                   **kwargs):
+    if exp is None:
+        exp = int(time.time()) + 3600
+    if iat is None:
+        iat = int(time.time())
     return make_jwt(
         dict(
             iss=iss,

@@ -22,6 +22,13 @@ from rest_framework.exceptions import AuthenticationFailed
 from .settings import api_settings
 from .util import cache
 
+JOSE_ERROR_BASES = (JoseError,)
+try:
+    from joserfc.errors import JoseError as JoserfcError
+    JOSE_ERROR_BASES = (JoseError, JoserfcError)
+except ImportError:
+    pass  # authlib < 1.6 does not raise joserfc errors
+
 logging.basicConfig()
 logger = logging.getLogger(__name__)
 
@@ -210,19 +217,27 @@ class JSONWebTokenAuthentication(BaseOidcAuthentication):
                 'Invalid Authorization header. Please provide base64 encoded ID Token'
             )
             raise AuthenticationFailed(msg)
-
+        except JOSE_ERROR_BASES:
+            msg = _(
+                'Invalid Authorization header. JWT claims could not be validated.')
+            logger.exception(msg)
+            raise AuthenticationFailed(msg)
         return id_token
 
     def validate_claims(self, id_token):
-        try:
-            id_token.validate(
-                now=int(time.time()),
-                leeway=int(time.time()-api_settings.OIDC_LEEWAY)
-            )
-        except ExpiredTokenError:
+        now = int(time.time())
+        if now > id_token['exp']:
             msg = _('Invalid Authorization header. JWT has expired.')
             raise AuthenticationFailed(msg)
-        except JoseError as e:
+        if id_token['iat'] < now - api_settings.OIDC_LEEWAY:
+            msg = _('Invalid Authorization header. JWT too old.')
+            raise AuthenticationFailed(msg)
+        try:
+            id_token.validate(
+                now=now,
+                leeway=now - api_settings.OIDC_LEEWAY
+            )
+        except JOSE_ERROR_BASES as e:
             msg = _(str(type(e)) + str(e))
             raise AuthenticationFailed(msg)
 
