@@ -2,13 +2,15 @@ import json
 import time
 from django.contrib.auth import get_user_model
 from requests.models import Response
-from authlib.jose import JsonWebToken, KeySet, RSAKey
+from joserfc import jwt
+from joserfc.jwk import RSAKey
+
 try:
     from unittest.mock import patch, Mock
 except ImportError:
     from mock import patch, Mock
 
-key = RSAKey.generate_key(is_private=True)
+key = RSAKey.generate_key(auto_kid=True)
 
 
 def make_id_token(sub,
@@ -34,10 +36,16 @@ def make_id_token(sub,
 
 
 def make_jwt(payload):
-    jwt = JsonWebToken(['RS256'])
     jws = jwt.encode(
-        {'alg': 'RS256', 'kid': key.as_dict(add_kid=True).get('kid')}, payload, key=key)
-    return jws
+        {'alg': 'RS256', 'kid': key.as_dict().get('kid')}, payload, key=key)
+    return jws.encode('ascii')
+
+
+def fake_jwks_response():
+    response = Response()
+    response._content = json.dumps({'keys': [key.as_dict()]}).encode('utf-8')
+    response.status_code = 200
+    return response
 
 
 class FakeRequests(object):
@@ -79,11 +87,7 @@ class AuthenticationTestCaseMixin(object):
                                      "userinfo_endpoint": "http://example.com/userinfo"})
         self.mock_get = self.patch('requests.get')
         self.mock_get.side_effect = self.responder.get
-        keys = KeySet(keys=[key])
         self.patch(
             'oidc_auth.authentication.request',
-            return_value=Mock(
-                status_code=200,
-                json=keys.as_json
-            )
+            return_value=fake_jwks_response()
         )

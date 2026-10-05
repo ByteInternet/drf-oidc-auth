@@ -40,8 +40,6 @@ OIDC_AUTH = {
     'OIDC_ENDPOINT': 'https://accounts.google.com',
 
     # The Claims Options can now be defined by a static string.
-    # ref: https://docs.authlib.org/en/latest/jose/jwt.html#jwt-payload-claims-validation
-    # The old OIDC_AUDIENCES option is removed in favor of this new option.
     # `aud` is only required, when you set it as an essential claim.
     'OIDC_CLAIMS_OPTIONS': {
         'aud': {
@@ -49,7 +47,12 @@ OIDC_AUTH = {
             'essential': True,
         }
     },
-    
+
+    # (Optional) The JWT algorithms that are allowed during signature
+    # verification. Tokens with a different `alg` in their header are
+    # rejected before verification. (default ('RS256',))
+    'JWT_ALGORITHMS': ('RS256',),
+
     # (Optional) Function that resolves id_token into user.
     # This function receives a request and an id_token dict and expects to
     # return a User object. The default implementation tries to find the user

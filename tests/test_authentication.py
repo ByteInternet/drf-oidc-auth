@@ -1,9 +1,10 @@
 import base64
 import json
 import sys
+import time
 
-from authlib.jose import JsonWebToken
-from authlib.jose.errors import BadSignatureError, DecodeError
+from joserfc import jwt as joserfc_jwt
+from joserfc.errors import BadSignatureError, DecodeError
 from django.http import HttpResponse
 from django.test import TestCase
 from django.urls import re_path as url
@@ -147,12 +148,12 @@ class TestJWTAuthentication(AuthenticationTestCaseMixin, TestCase):
         payload = payload or dict(
             iss='http://example.com',
             aud='you',
-            exp=999999999999,
-            iat=999999999999,
+            exp=int(time.time()) + 3600,
+            iat=int(time.time()),
             sub=str(self.user.username),
         )
         if key is not None:
-            return JsonWebToken([header['alg']]).encode(header, payload, key)
+            return joserfc_jwt.encode(header, payload, key).encode('ascii')
         encoded_header = base64.urlsafe_b64encode(
             json.dumps(header).encode('utf-8')).rstrip(b'=')
         encoded_payload = base64.urlsafe_b64encode(
@@ -272,16 +273,27 @@ class TestJWTAuthentication(AuthenticationTestCaseMixin, TestCase):
         self.assertEqual(resp.status_code, 401)
 
     def test_jwt_algorithms_setting_is_configurable(self):
+        from joserfc.jwk import OctKey
         from oidc_auth.settings import api_settings
-        token = self.make_token({'alg': 'HS256', 'typ': 'JWT'})
-        self.authentication = JSONWebTokenAuthentication()
+        hs256_key = OctKey.generate_key()
+        self.patch(
+            'oidc_auth.authentication.JSONWebTokenAuthentication.jwks_data',
+            return_value={'keys': [hs256_key.as_dict()]})
+        authentication = JSONWebTokenAuthentication()
+        token = joserfc_jwt.encode(
+            {'alg': 'HS256', 'typ': 'JWT'},
+            dict(iss='http://example.com', aud='you',
+                 exp=int(time.time()) + 3600, iat=int(time.time()),
+                 sub=str(self.user.username)),
+            hs256_key).encode('ascii')
 
         with patch('oidc_auth.authentication.api_settings.JWT_ALGORITHMS', ('RS256',)):
             self.assertRaises(
-                AuthenticationFailed, self.authentication.validate_jwt_header, token)
+                AuthenticationFailed, authentication.decode_jwt, token)
 
-        with patch('oidc_auth.authentication.api_settings.JWT_ALGORITHMS', ('HS256', 'RS256')):
-            self.authentication.validate_jwt_header(token)
+        with patch('oidc_auth.authentication.api_settings.JWT_ALGORITHMS', ('HS256',)):
+            claims = authentication.decode_jwt(token)
+            self.assertEqual(claims['sub'], str(self.user.username))
 
 
     @patch('oidc_auth.authentication.jwt.decode')

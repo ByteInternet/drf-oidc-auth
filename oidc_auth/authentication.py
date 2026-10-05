@@ -1,14 +1,13 @@
-import base64
-import json
 import logging
 import time
 
 import requests
-from authlib.jose import JsonWebKey, jwt
-from authlib.jose.errors import (BadSignatureError, DecodeError,
-                                 ExpiredTokenError, JoseError)
-from authlib.oidc.core.claims import IDToken
-from authlib.oidc.discovery import get_well_known_url
+from joserfc import jwt
+from joserfc.errors import (BadSignatureError, DecodeError,
+                            ExpiredTokenError, InvalidKeyIdError,
+                            JoseError, UnsupportedAlgorithmError)
+from joserfc.jwk import KeySet
+from joserfc.jwt import JWTClaimsRegistry
 from django.contrib.auth import get_user_model
 from django.utils.encoding import smart_str
 from django.utils.functional import cached_property
@@ -21,13 +20,6 @@ from rest_framework.exceptions import AuthenticationFailed
 
 from .settings import api_settings
 from .util import cache
-
-JOSE_ERROR_BASES = (JoseError,)
-try:
-    from joserfc.errors import JoseError as JoserfcError
-    JOSE_ERROR_BASES = (JoseError, JoserfcError)
-except ImportError:
-    pass  # authlib < 1.6 does not raise joserfc errors
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
@@ -43,30 +35,12 @@ def get_user_by_id(request, id_token):
     return user
 
 
-class DRFIDToken(IDToken):
-
-    def validate_exp(self, now, leeway):
-        super(DRFIDToken, self).validate_exp(now, leeway)
-        if now > self['exp']:
-            msg = _('Invalid Authorization header. JWT has expired.')
-            raise AuthenticationFailed(msg)
-
-    def validate_iat(self, now, leeway):
-        super(DRFIDToken, self).validate_iat(now, leeway)
-        if self['iat'] < leeway:
-            msg = _('Invalid Authorization header. JWT too old.')
-            raise AuthenticationFailed(msg)
-
-
 class BaseOidcAuthentication(BaseAuthentication):
     @property
     @cache(ttl=api_settings.OIDC_BEARER_TOKEN_EXPIRATION_TIME)
     def oidc_config(self):
         return requests.get(
-            get_well_known_url(
-                api_settings.OIDC_ENDPOINT,
-                external=True
-            )
+            api_settings.OIDC_ENDPOINT.rstrip('/') + '/.well-known/openid-configuration'
         ).json()
 
 
@@ -128,7 +102,7 @@ class JSONWebTokenAuthentication(BaseOidcAuthentication):
         _claims_options = {
             'iss': {
                 'essential': True,
-                'values': [self.issuer]
+                'value': self.issuer
             }
         }
         for key, value in api_settings.OIDC_CLAIMS_OPTIONS.items():
@@ -164,7 +138,7 @@ class JSONWebTokenAuthentication(BaseOidcAuthentication):
         return auth[1]
 
     def jwks(self):
-        return JsonWebKey.import_key_set(self.jwks_data())
+        return KeySet.import_key_set(self.jwks_data())
 
     @cache(ttl=api_settings.OIDC_JWKS_EXPIRATION_TIME)
     def jwks_data(self):
@@ -176,69 +150,53 @@ class JSONWebTokenAuthentication(BaseOidcAuthentication):
     def issuer(self):
         return self.oidc_config['issuer']
 
-    def validate_jwt_header(self, jwt_value):
-        jwt_header = jwt_value.split(b'.')[0]
-        try:
-            padded_jwt_header = jwt_header + b'=' * (-len(jwt_header) % 4)
-            decoded_header = json.loads(base64.urlsafe_b64decode(padded_jwt_header))
-        except ValueError:
-            msg = _(
-                'Invalid Authorization header. Please provide base64 encoded ID Token'
-            )
-            raise AuthenticationFailed(msg)
-
-        if not isinstance(decoded_header, dict) or \
-                decoded_header.get('alg') not in api_settings.JWT_ALGORITHMS:
-            msg = _('Invalid Authorization header. JWT algorithm not allowed.')
-            logger.exception(msg)
-            raise AuthenticationFailed(msg)
-
     def decode_jwt(self, jwt_value):
-        self.validate_jwt_header(jwt_value)
         try:
-            id_token = jwt.decode(
+            token = jwt.decode(
                 jwt_value.decode('ascii'),
                 self.jwks(),
-                claims_cls=DRFIDToken,
-                claims_options=self.claims_options
+                algorithms=api_settings.JWT_ALGORITHMS
             )
+        except UnsupportedAlgorithmError:
+            msg = _(
+                'Invalid Authorization header. JWT algorithm not allowed.')
+            logger.exception(msg)
+            raise AuthenticationFailed(msg)
         except (BadSignatureError, DecodeError):
             msg = _(
                 'Invalid Authorization header. JWT Signature verification failed.')
             logger.exception(msg)
             raise AuthenticationFailed(msg)
-        except ValueError:
+        except (InvalidKeyIdError, ValueError):
             msg = _(
                 'Invalid Authorization header. JWT signature key not found.')
             logger.exception(msg)
             raise AuthenticationFailed(msg)
-        except AssertionError:
+        except JoseError:
             msg = _(
-                'Invalid Authorization header. Please provide base64 encoded ID Token'
-            )
-            raise AuthenticationFailed(msg)
-        except JOSE_ERROR_BASES:
-            msg = _(
-                'Invalid Authorization header. JWT claims could not be validated.')
+                'Invalid Authorization header. JWT could not be decoded.')
             logger.exception(msg)
             raise AuthenticationFailed(msg)
-        return id_token
+
+        return token.claims
 
     def validate_claims(self, id_token):
-        now = int(time.time())
-        if now > id_token['exp']:
+        registry = JWTClaimsRegistry(
+            now=int(time.time()),
+            leeway=api_settings.OIDC_LEEWAY,
+            **self.claims_options
+        )
+        try:
+            registry.validate(id_token)
+        except ExpiredTokenError:
             msg = _('Invalid Authorization header. JWT has expired.')
             raise AuthenticationFailed(msg)
-        if id_token['iat'] < now - api_settings.OIDC_LEEWAY:
-            msg = _('Invalid Authorization header. JWT too old.')
-            raise AuthenticationFailed(msg)
-        try:
-            id_token.validate(
-                now=now,
-                leeway=now - api_settings.OIDC_LEEWAY
-            )
-        except JOSE_ERROR_BASES as e:
+        except JoseError as e:
             msg = _(str(type(e)) + str(e))
+            raise AuthenticationFailed(msg)
+
+        if id_token.get('iat', 0) < int(time.time()) - api_settings.OIDC_LEEWAY:
+            msg = _('Invalid Authorization header. JWT too old.')
             raise AuthenticationFailed(msg)
 
     def authenticate_header(self, request):
