@@ -1,12 +1,16 @@
+import base64
+import json
 import sys
+import time
 
-from authlib.jose.errors import BadSignatureError, DecodeError
+from joserfc import jwt as joserfc_jwt
+from joserfc.errors import BadSignatureError, DecodeError
 from django.http import HttpResponse
 from django.test import TestCase
 from django.urls import re_path as url
 from oidc_auth.authentication import (BearerTokenAuthentication,
                                       JSONWebTokenAuthentication)
-from oidc_auth.test import AuthenticationTestCaseMixin, make_id_token
+from oidc_auth.test import AuthenticationTestCaseMixin, key, make_id_token
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
@@ -140,6 +144,22 @@ class TestBearerAuthentication(AuthenticationTestCaseMixin, TestCase):
 class TestJWTAuthentication(AuthenticationTestCaseMixin, TestCase):
     urls = __name__
 
+    def make_token(self, header, payload=None, key=None):
+        payload = payload or dict(
+            iss='http://example.com',
+            aud='you',
+            exp=int(time.time()) + 3600,
+            iat=int(time.time()),
+            sub=str(self.user.username),
+        )
+        if key is not None:
+            return joserfc_jwt.encode(header, payload, key).encode('ascii')
+        encoded_header = base64.urlsafe_b64encode(
+            json.dumps(header).encode('utf-8')).rstrip(b'=')
+        encoded_payload = base64.urlsafe_b64encode(
+            json.dumps(payload).encode('utf-8')).rstrip(b'=')
+        return b'.'.join([encoded_header, encoded_payload, b''])
+
     def test_using_valid_jwt(self):
         auth = 'JWT ' + make_id_token(self.user.username)
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
@@ -211,6 +231,70 @@ class TestJWTAuthentication(AuthenticationTestCaseMixin, TestCase):
         auth = 'JWT ' + make_id_token(self.user.username)
         resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth + 'x')
         self.assertEqual(resp.status_code, 401)
+
+    def test_with_alg_none_and_empty_signature(self):
+        auth = 'JWT ' + self.make_token(
+            {'alg': 'none', 'typ': 'JWT'}).decode('ascii')
+        resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
+        self.assertEqual(resp.status_code, 401)
+
+    def test_with_alg_none_and_garbage_signature(self):
+        token = self.make_token({'alg': 'none', 'typ': 'JWT'})
+        auth = 'JWT ' + (token + b'Z2FyYmFnZQ==').decode('ascii')
+        resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
+        self.assertEqual(resp.status_code, 401)
+
+    def test_with_hs256_algorithm(self):
+        auth = 'JWT ' + self.make_token(
+            {'alg': 'HS256', 'typ': 'JWT'}).decode('ascii')
+        resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
+        self.assertEqual(resp.status_code, 401)
+
+    def test_with_malformed_jwt_header(self):
+        header = base64.urlsafe_b64encode(b'not-json').rstrip(b'=')
+        payload = base64.urlsafe_b64encode(b'{}').rstrip(b'=')
+        auth = 'JWT ' + (header + b'.' + payload + b'.').decode('ascii')
+        resp = self.client.get('/test/', HTTP_AUTHORIZATION=auth)
+        self.assertEqual(resp.status_code, 401)
+
+    def test_with_non_object_jwt_header(self):
+        for header in (b'[]', b'"x"', b'5', b'null'):
+            encoded_header = base64.urlsafe_b64encode(header).rstrip(b'=')
+            token = encoded_header + b'.' + base64.urlsafe_b64encode(b'{}').rstrip(b'=') + b'.'
+            resp = self.client.get(
+                '/test/', HTTP_AUTHORIZATION='JWT ' + token.decode('ascii'))
+            self.assertEqual(resp.status_code, 401)
+
+    def test_with_unknown_kid(self):
+        token = self.make_token(
+            {'alg': 'RS256', 'typ': 'JWT', 'kid': 'unknown'}, key=key)
+        resp = self.client.get(
+            '/test/', HTTP_AUTHORIZATION='JWT ' + token.decode('ascii'))
+        self.assertEqual(resp.status_code, 401)
+
+    def test_jwt_algorithms_setting_is_configurable(self):
+        from joserfc.jwk import OctKey
+        from oidc_auth.settings import api_settings
+        hs256_key = OctKey.generate_key()
+        self.patch(
+            'oidc_auth.authentication.JSONWebTokenAuthentication.jwks_data',
+            return_value={'keys': [hs256_key.as_dict()]})
+        authentication = JSONWebTokenAuthentication()
+        token = joserfc_jwt.encode(
+            {'alg': 'HS256', 'typ': 'JWT'},
+            dict(iss='http://example.com', aud='you',
+                 exp=int(time.time()) + 3600, iat=int(time.time()),
+                 sub=str(self.user.username)),
+            hs256_key).encode('ascii')
+
+        with patch('oidc_auth.authentication.api_settings.JWT_ALGORITHMS', ('RS256',)):
+            self.assertRaises(
+                AuthenticationFailed, authentication.decode_jwt, token)
+
+        with patch('oidc_auth.authentication.api_settings.JWT_ALGORITHMS', ('HS256',)):
+            claims = authentication.decode_jwt(token)
+            self.assertEqual(claims['sub'], str(self.user.username))
+
 
     @patch('oidc_auth.authentication.jwt.decode')
     @patch('oidc_auth.authentication.logger')

@@ -17,6 +17,9 @@ DEFAULTS = {
         }
     },
 
+    # The JWT algorithms allowed during signature verification
+    'JWT_ALGORITHMS': ('RS256',),
+
     # Number of seconds in the past valid tokens can be issued
     'OIDC_LEEWAY': 600,
 

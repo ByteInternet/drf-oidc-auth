@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "drf-oidc-auth"
+version = "4.0.0"
+description = "OpenID Connect authentication for Django Rest Framework"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Byte B.V.", email = "support@byte.nl" }]
+requires-python = ">=3.10"
+dependencies = [
+    "django>=3.2",
+    "djangorestframework>=3.11",
+    "joserfc>=1.6",
+    "requests>=2.20.0",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Framework :: Django",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Security",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+
+[project.urls]
+Homepage = "https://github.com/ByteInternet/drf-oidc-auth"
+
+[tool.setuptools]
+packages = ["oidc_auth"]
